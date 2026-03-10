@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+@import './base.css';
+
+html,
+body {
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--el-color-background);
+  color: var(--el-text-color-primary);
+}
+
+#app {
+  margin: 0 auto;
+  padding: 0.125rem;
+  height: 100%;
+  overflow: hidden;
+}
