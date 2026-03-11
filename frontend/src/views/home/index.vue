@@ -1,13 +1,23 @@
 <template>
   <div class="w-full h-full select-none relative">
-    <div class="h-full w-full" @wheel.prevent="handleWheel">
+    <div class="h-full w-full" @wheel.prevent="handleWheel" @dblclick="showDialog">
       <img v-show="curSrc" :src="curSrc" class="object-contain w-full h-full min-w-0 min-h-0" />
     </div>
     <el-dialog v-model="dialogVisible" fullscreen :show-close="false" body-class="h-full">
       <el-tabs v-model="activeName" type="card" class="h-full" :before-leave="handleTabClick">
-        <el-tab-pane label="Search" name="search" class="h-full">
+        <el-tab-pane label="Music" name="music" class="h-full">
           <div class="w-full h-full flex flex-col gap-2">
-            <el-input v-model="searchText" placeholder="Search" clearable />
+            <div class="flex flex-row gap-2">
+              <el-input v-model="searchText" placeholder="Search" clearable class="flex-2" />
+              <el-select
+                v-model="selectedSortType"
+                placeholder="Sort Type"
+                class="flex-1"
+                @change="handleChangeSortType"
+              >
+                <el-option v-for="item in sortTypeList" :key="item" :label="item" :value="item" />
+              </el-select>
+            </div>
             <el-scrollbar class="flex-1 min-h-0">
               <div class="flex flex-wrap gap-1">
                 <el-tag
@@ -44,9 +54,9 @@
             </el-scrollbar>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="Music Doc" name="music" :disabled="imgs.length === 0" class="h-full">
+        <el-tab-pane label="Document" name="document" :disabled="imgs.length === 0" class="h-full">
           <el-scrollbar class="flex-1 min-h-0">
-            <Music />
+            <MusicDocument />
           </el-scrollbar>
         </el-tab-pane>
         <el-tab-pane label="Close" name="close"></el-tab-pane>
@@ -62,15 +72,17 @@
   </div>
 </template>
 <script setup lang="ts">
-import Music from './Music.vue'
+import MusicDocument from './MusicDocument.vue'
 import {
   AddSource,
   ClearSources,
   GetBase64,
+  GetConfigs,
   GetImages,
-  GetLatestIndex,
+  GetSortTypeList,
   GetSources,
   RemoveSource,
+  SetSortType,
 } from '@/wailsjs/go/app/app'
 import { DocumentAdd, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
 import { app } from '@/wailsjs/go/models'
@@ -81,6 +93,8 @@ import { EventsEmit } from '@/wailsjs/runtime/runtime'
 
 const THROTTLE_TIME = 50
 
+const sortTypeList = ref<string[]>([])
+const selectedSortType = ref('')
 const sources = ref<app.Source[]>([])
 const imgs = ref<Image[]>([])
 const searchText = ref('')
@@ -176,7 +190,15 @@ async function showDialog() {
   }
 }
 
+const handleChangeSortType = async () => {
+  if (selectedSortType.value) {
+    await SetSortType(selectedSortType.value)
+    await updateImages()
+  }
+}
+
 watch(curIndex, async (newVal, _) => {
+  console.log('curIndex:', newVal)
   const newImg = imgs.value[newVal]
   if (newVal !== -1 && newImg) {
     if (!newImg.base64) {
@@ -214,10 +236,18 @@ const handleWheel = useThrottleFn((e: WheelEvent) => {
 }, THROTTLE_TIME)
 
 onMounted(async () => {
+  sortTypeList.value = (await GetSortTypeList()).sort((a, b) =>
+    a.localeCompare(b, 'zh-CN', { numeric: true }),
+  )
   await handleChangeSources(async () => {})
+  const cfg = await GetConfigs()
+  console.log('cfg:', cfg)
+  selectedSortType.value = cfg.SortType
   if (imgs.value.length > 0) {
-    const latestIndex = await GetLatestIndex()
-    if (latestIndex !== -1) {
+    const latestIndex = cfg.LatestIndex
+    console.log('latestIndex:', latestIndex)
+    if (latestIndex !== -1 && curIndex.value != latestIndex) {
+      await nextTick()
       curIndex.value = latestIndex
     }
   } else {

@@ -2,26 +2,28 @@ package app
 
 import (
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/ini.v1"
 )
 
-type conf struct {
+type Conf struct {
 	Height      int
 	Width       int
 	PosX        int
 	PosY        int
 	Sources     []string
 	LatestIndex float64
+	SortType    SortType
 }
 
 const (
 	CONFIG_NAME = "config.ini"
 )
 
-var Config *conf
+var Config *Conf
 var iniFile *ini.File
 var configPath = ""
 
@@ -44,12 +46,13 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	Config = &conf{
+	Config = &Conf{
 		Height:      768,
 		Width:       1024,
 		PosX:        -1,
 		PosY:        -1,
 		LatestIndex: -1,
+		SortType:    SortByName,
 	}
 	err = iniFile.MapTo(Config)
 	if err != nil {
@@ -57,7 +60,7 @@ func init() {
 	}
 }
 
-func (c *conf) Save() error {
+func (c *Conf) Save() error {
 	if configPath == "" {
 		return errors.New("config path is empty")
 	}
@@ -66,4 +69,13 @@ func (c *conf) Save() error {
 		return err
 	}
 	return iniFile.SaveTo(configPath)
+}
+
+func (a *app) GetConfigs() Conf {
+	log.Printf("GetConfigs: %v", Config)
+	viewAbleConfig := Conf{
+		LatestIndex: Config.LatestIndex,
+		SortType:    Config.SortType,
+	}
+	return viewAbleConfig
 }

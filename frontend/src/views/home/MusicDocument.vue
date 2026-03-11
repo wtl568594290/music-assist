@@ -56,19 +56,6 @@
           />
         </div>
       </el-form-item>
-      <el-form-item label="Sort">
-        <div class="flex flex-row gap-2 items-center justify-center">
-          <el-select v-model="sortSelected" placeholder="Sort" style="width: 240px">
-            <el-option
-              v-for="(item, idx) in sortTypeOptions"
-              :key="idx"
-              :label="capitalize(item)"
-              :value="item"
-            />
-          </el-select>
-          <el-checkbox v-model="isDesc" label="Desc"></el-checkbox>
-        </div>
-      </el-form-item>
       <el-form-item label="Catalog Cols">
         <el-input-number
           style="width: 120px"
@@ -118,9 +105,6 @@ const pageCfg = reactive({
 })
 const pageSizeOptions = ['A3', 'A4', 'A5']
 const pageSize = ref('A4')
-const sortTypeOptions = ['name', 'modTime', 'created']
-const sortSelected = ref('name')
-const isDesc = ref(false)
 const catalogCols = ref(3)
 const pageNumberFontSize = ref(16)
 const catalogFontSize = ref(12)
@@ -148,7 +132,6 @@ const handleGenerate = () => {
     PageBottom: pageCfg.bottom,
     PageLeft: pageCfg.left,
     PageRight: pageCfg.right,
-    SortType: sortSelected.value + (isDesc.value ? 'Desc' : ''),
     CatalogCols: catalogCols.value,
     CatalogFontSize: catalogFontSize.value,
     PageNumberFontSize: pageNumberFontSize.value,

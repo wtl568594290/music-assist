@@ -10,8 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -21,19 +19,6 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 	"golang.org/x/image/bmp"
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
-)
-
-type SortType string
-
-const (
-	SortByName        SortType = "name"
-	SortByNameDesc    SortType = "nameDesc"
-	SortByModTime     SortType = "modTime"
-	SortByModTimeDesc SortType = "modTimeDesc"
-	SortByCreated     SortType = "created"
-	SortByCreatedDesc SortType = "createdDesc"
 )
 
 const (
@@ -50,21 +35,12 @@ const (
 	CatalogLineMult = 1.5
 )
 
-type FileInfo struct {
-	Path     string
-	BaseName string
-	Ext      string
-	ModTime  time.Time
-	Created  time.Time
-}
-
 type GenerateParams struct {
 	PageSize           string
 	PageTop            float64
 	PageBottom         float64
 	PageLeft           float64
 	PageRight          float64
-	SortType           SortType
 	CatalogCols        int
 	CatalogFontSize    int
 	PageNumberFontSize int
@@ -76,17 +52,14 @@ var CatalogFontSizePt, PageNumberFontSizePt int = 12, 16
 var maxH, maxW, imgFootSpace, pageNumberFootSPace float64
 
 func (a *app) GenerateDoc(params *GenerateParams) (string, error) {
-	paths, err := a.GetImages()
+	imgs, err := a.GetImages()
 	if err != nil {
 		return "", err
 	}
-	if len(paths) == 0 {
+	if len(imgs) == 0 {
 		return "", errors.New("No image")
 	}
-	imgs, err := getFilesByPaths(paths)
-	if err != nil {
-		return "", err
-	}
+
 	PageTop, PageBottom, PageLeft, PageRight = params.PageTop, params.PageBottom, params.PageLeft, params.PageRight
 	CatalogFontSizePt, PageNumberFontSizePt = params.CatalogFontSize, params.PageNumberFontSize
 	imgFootSpace = ptToMm(ImageParagraphAfter) + ptToMm(ImageParagraphFontSizePt)*ImageParagraphLineMult
@@ -103,12 +76,6 @@ func (a *app) GenerateDoc(params *GenerateParams) (string, error) {
 	}
 	maxH = pageH - PageTop - PageBottom - imgFootSpace - pageNumberFootSPace - HeightRedundancy
 	maxW = pageW - PageLeft - PageRight
-
-	if len(imgs) == 0 {
-		return "", errors.New("No picture")
-	}
-	log.Println("GenerateDoc", params)
-	imgs = sortFiles(imgs, params.SortType)
 
 	// Create new document
 	doc := document.New()
@@ -299,86 +266,6 @@ func createImagesDoc(doc *document.Document, files []FileInfo) {
 	}
 }
 
-func sortFiles(files []FileInfo, sortType SortType) []FileInfo {
-	switch sortType {
-	case SortByCreated:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].Created.Before(files[j].Created)
-		})
-	case SortByCreatedDesc:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].Created.After(files[j].Created)
-		})
-	case SortByModTime:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime.Before(files[j].ModTime)
-		})
-	case SortByModTimeDesc:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime.After(files[j].ModTime)
-		})
-	case SortByNameDesc:
-		collator := collate.New(language.SimplifiedChinese, collate.Numeric, collate.IgnoreCase)
-		sort.Slice(files, func(i, j int) bool {
-			return collator.CompareString(files[i].BaseName, files[j].BaseName) > 0
-		})
-	default:
-		collator := collate.New(language.SimplifiedChinese, collate.Numeric, collate.IgnoreCase)
-		sort.Slice(files, func(i, j int) bool {
-			return collator.CompareString(files[i].BaseName, files[j].BaseName) < 0
-		})
-	}
-	return files
-}
-
-func getFilesByDir(dir string, exts []string) ([]FileInfo, error) {
-	files := []FileInfo{}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return files, err
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		baseName := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-		ext := "." + strings.TrimPrefix(filepath.Ext(entry.Name()), ".")
-		if len(exts) == 0 || slices.Contains(exts, ext) {
-			files = append(files, FileInfo{
-				Path:     filepath.Join(dir, entry.Name()),
-				BaseName: baseName,
-				Ext:      ext,
-				ModTime:  info.ModTime(),
-				Created:  getCreateTime(info),
-			})
-		}
-	}
-	return files, nil
-}
-
-func getFilesByPaths(paths []string) ([]FileInfo, error) {
-	files := []FileInfo{}
-	for _, path := range paths {
-		entry, err := os.Stat(path)
-		if entry.IsDir() || err != nil {
-			continue
-		}
-		baseName := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-		ext := "." + strings.TrimPrefix(filepath.Ext(entry.Name()), ".")
-		files = append(files, FileInfo{
-			Path:     path,
-			BaseName: baseName,
-			Ext:      ext,
-			ModTime:  entry.ModTime(),
-			Created:  getCreateTime(entry),
-		})
-	}
-	return files, nil
-}
 func ptToMm(pt float64) float64 {
 	return pt * 25.4 / 72.0
 }
@@ -389,9 +276,4 @@ func mmToPt(mm float64) float64 {
 
 func ptToTwip(pt float64) float64 {
 	return pt * 20
-}
-
-func getCreateTime(info os.FileInfo) time.Time {
-	stat := info.Sys().(*syscall.Win32FileAttributeData)
-	return time.Unix(0, stat.CreationTime.Nanoseconds())
 }

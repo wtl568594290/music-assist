@@ -139,7 +139,7 @@ func (a *app) GetSources() []Source {
 	return srcs.ToSlice()
 }
 
-func (a *app) GetImages() ([]string, error) {
+func (a *app) GetImages() ([]FileInfo, error) {
 	clear(imgMap)
 	for path, isDir := range srcs {
 		if isDir {
@@ -157,7 +157,7 @@ func (a *app) GetImages() ([]string, error) {
 					continue
 				}
 				if isImg {
-					imgMap[filePath] = struct{}{}
+					imgMap.Add(filePath)
 				}
 			}
 		} else {
@@ -166,7 +166,7 @@ func (a *app) GetImages() ([]string, error) {
 				continue
 			}
 			if isImg {
-				imgMap[path] = struct{}{}
+				imgMap.Add(path)
 			}
 		}
 	}
@@ -180,8 +180,4 @@ func (a *app) GetBase64(path string) (string, error) {
 	}
 	base64Str := base64.StdEncoding.EncodeToString(fileBytes)
 	return "data:image/png;base64," + base64Str, nil
-}
-
-func (a *app) GetLatestIndex() float64 {
-	return Config.LatestIndex
 }
