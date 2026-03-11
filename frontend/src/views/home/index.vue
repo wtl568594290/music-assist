@@ -1,25 +1,27 @@
 <template>
   <div class="w-full h-full select-none relative">
-    <div class="h-full w-full" @wheel.prevent="handleWheel" @click="showDialog">
+    <div class="h-full w-full" @wheel.prevent="handleWheel">
       <img v-show="curSrc" :src="curSrc" class="object-contain w-full h-full min-w-0 min-h-0" />
     </div>
     <el-dialog v-model="dialogVisible" fullscreen :show-close="false" body-class="h-full">
       <el-tabs v-model="activeName" type="card" class="h-full" :before-leave="handleTabClick">
-        <el-tab-pane label="Search" name="search">
+        <el-tab-pane label="Search" name="search" class="h-full">
           <div class="w-full h-full flex flex-col gap-2">
             <el-input v-model="searchText" placeholder="Search" clearable />
-            <div class="flex flex-wrap gap-1">
-              <el-tag
-                v-for="(item, idx) in filteredImgs"
-                :key="idx"
-                @click="handleChose(item.path)"
-                :type="item.path === curPath ? 'primary' : 'info'"
-                class="cursor-pointer"
-                size="large"
-              >
-                {{ item.name }}
-              </el-tag>
-            </div>
+            <el-scrollbar class="flex-1 min-h-0">
+              <div class="flex flex-wrap gap-1">
+                <el-tag
+                  v-for="(item, idx) in filteredImgs"
+                  :key="idx"
+                  @click="handleChose(item.path)"
+                  :type="item.path === curPath ? 'primary' : 'info'"
+                  class="cursor-pointer"
+                  size="large"
+                >
+                  {{ item.name }}
+                </el-tag>
+              </div>
+            </el-scrollbar>
           </div>
         </el-tab-pane>
         <el-tab-pane label="Sources" name="sources" class="h-full">
@@ -39,13 +41,14 @@
               >
                 <span>{{ item.Path }}</span>
               </div>
-              <el-backtop :right="100" :bottom="100" />
             </el-scrollbar>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="Music Doc" name="music" :disabled="imgs.length === 0"
-          ><Music
-        /></el-tab-pane>
+        <el-tab-pane label="Music Doc" name="music" :disabled="imgs.length === 0" class="h-full">
+          <el-scrollbar class="flex-1 min-h-0">
+            <Music />
+          </el-scrollbar>
+        </el-tab-pane>
         <el-tab-pane label="Close" name="close"></el-tab-pane>
       </el-tabs>
     </el-dialog>
