@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/base64"
 	"errors"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,9 +35,13 @@ func isImage(filePath string) (bool, error) {
 	return contentType[:6] == "image/", nil
 }
 
-func (a *app) addImagePath() error {
+func (a *app) addImagePath(isTraversal bool) error {
+	title := "Select a image folder"
+	if isTraversal {
+		title += " (traverse)"
+	}
 	options := wailsruntime.OpenDialogOptions{
-		Title: "Select a image folder",
+		Title: title,
 	}
 	path, err := wailsruntime.OpenDirectoryDialog(a.Ctx, options)
 	if err != nil {
@@ -45,10 +50,29 @@ func (a *app) addImagePath() error {
 	if path == "" {
 		return errors.New("path is empty")
 	}
-	if _, ok := srcs[path]; ok {
-		return errors.New("path already added")
+
+	if isTraversal {
+		// traverse the folder
+		err = filepath.WalkDir(path, func(p string, d fs.DirEntry, e error) error {
+			if e != nil {
+				return e
+			}
+			if d.IsDir() {
+				if _, ok := srcs[p]; !ok {
+					srcs[p] = true
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return errors.New("traverse folder failed")
+		}
+	} else {
+		if _, ok := srcs[path]; ok {
+			return errors.New("path already added")
+		}
+		srcs[path] = true
 	}
-	srcs[path] = true
 	return err
 }
 
@@ -119,9 +143,43 @@ func resolveSource(paths []string) {
 	}
 }
 
-func (a *app) AddSource(isDir bool) error {
+func generateImagesMap() (MapStringFileInfo, error) {
+	var imgs = NewMapStringStruct()
+	for path, isDir := range srcs {
+		if isDir {
+			files, err := os.ReadDir(path)
+			if err != nil {
+				continue
+			}
+			for _, file := range files {
+				if file.IsDir() {
+					continue
+				}
+				filePath := filepath.Join(path, file.Name())
+				isImg, err := isImage(filePath)
+				if err != nil {
+					continue
+				}
+				if isImg {
+					imgs.Add(filePath)
+				}
+			}
+		} else {
+			isImg, err := isImage(path)
+			if err != nil {
+				continue
+			}
+			if isImg {
+				imgs.Add(path)
+			}
+		}
+	}
+	return imgs, nil
+}
+
+func (a *app) AddSource(isDir bool, isTraversal bool) error {
 	if isDir {
-		return a.addImagePath()
+		return a.addImagePath(isTraversal)
 	}
 	return a.addImageFiles()
 }
@@ -141,36 +199,13 @@ func (a *app) GetSources() []Source {
 
 func (a *app) GetImages() ([]FileInfo, error) {
 	clear(imgMap)
-	for path, isDir := range srcs {
-		if isDir {
-			files, err := os.ReadDir(path)
-			if err != nil {
-				continue
-			}
-			for _, file := range files {
-				if file.IsDir() {
-					continue
-				}
-				filePath := filepath.Join(path, file.Name())
-				isImg, err := isImage(filePath)
-				if err != nil {
-					continue
-				}
-				if isImg {
-					imgMap.Add(filePath)
-				}
-			}
-		} else {
-			isImg, err := isImage(path)
-			if err != nil {
-				continue
-			}
-			if isImg {
-				imgMap.Add(path)
-			}
-		}
+	mp, err := generateImagesMap()
+	if err != nil {
+		return mp.ToSlice(Config.SortType), err
 	}
-	return imgMap.ToSlice(), nil
+	// 缓存图片
+	imgMap = mp
+	return imgMap.ToSlice(Config.SortType), nil
 }
 
 func (a *app) GetBase64(path string) (string, error) {

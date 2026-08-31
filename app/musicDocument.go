@@ -44,6 +44,7 @@ type GenerateParams struct {
 	CatalogCols        int
 	CatalogFontSize    int
 	PageNumberFontSize int
+	SortType           SortType
 }
 
 // PageBottom不设置，因为要显示页数，使用ImageHeightRedundancy来替代它
@@ -52,13 +53,14 @@ var CatalogFontSizePt, PageNumberFontSizePt int = 12, 16
 var maxH, maxW, imgFootSpace, pageNumberFootSPace float64
 
 func (a *app) GenerateDoc(params *GenerateParams) (string, error) {
-	imgs, err := a.GetImages()
+	imgsPathMap, err := generateImagesMap()
 	if err != nil {
 		return "", err
 	}
-	if len(imgs) == 0 {
+	if len(imgsPathMap) == 0 {
 		return "", errors.New("No image")
 	}
+	imgs := imgsPathMap.ToSlice(params.SortType)
 
 	PageTop, PageBottom, PageLeft, PageRight = params.PageTop, params.PageBottom, params.PageLeft, params.PageRight
 	CatalogFontSizePt, PageNumberFontSizePt = params.CatalogFontSize, params.PageNumberFontSize

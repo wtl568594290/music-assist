@@ -13,6 +13,7 @@
   },
   "wailsjsdir": "./frontend/src",
   "info": {
-    "copyright": "Copyright ©2025 wtl1989"
+    "copyright": "Copyright ©2026 wtl1989",
+    "productVersion": "0.0.4"
   }
 }

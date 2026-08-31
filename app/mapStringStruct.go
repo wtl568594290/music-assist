@@ -18,8 +18,8 @@ type FileInfo struct {
 	Path     string
 	BaseName string
 	Ext      string
-	ModTime  time.Time
-	Created  time.Time
+	ModTime  int64
+	Created  int64
 }
 
 type SortType string
@@ -50,12 +50,12 @@ type Source struct {
 type MapStringFileInfo map[string]FileInfo
 type MapStringBool map[string]bool
 
-func (m MapStringFileInfo) ToSlice() []FileInfo {
+func (m MapStringFileInfo) ToSlice(sortType SortType) []FileInfo {
 	slice := make([]FileInfo, 0, len(m))
 	for _, info := range m {
 		slice = append(slice, info)
 	}
-	slice = sortFiles(slice, Config.SortType)
+	slice = sortFiles(slice, sortType)
 	return slice
 }
 
@@ -73,8 +73,8 @@ func (m MapStringFileInfo) Add(path string) error {
 		Path:     path,
 		BaseName: baseName,
 		Ext:      ext,
-		ModTime:  entry.ModTime(),
-		Created:  getCreateTime(entry),
+		ModTime:  entry.ModTime().UnixMilli(),
+		Created:  getCreateTime(entry).UnixMilli(),
 	}
 	return nil
 }
@@ -116,19 +116,19 @@ func sortFiles(files []FileInfo, sortType SortType) []FileInfo {
 	switch sortType {
 	case SortByCreated:
 		sort.Slice(files, func(i, j int) bool {
-			return files[i].Created.Before(files[j].Created)
+			return files[i].Created < files[j].Created
 		})
 	case SortByCreatedDesc:
 		sort.Slice(files, func(i, j int) bool {
-			return files[i].Created.After(files[j].Created)
+			return files[i].Created > files[j].Created
 		})
 	case SortByModTime:
 		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime.Before(files[j].ModTime)
+			return files[i].ModTime < files[j].ModTime
 		})
 	case SortByModTimeDesc:
 		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime.After(files[j].ModTime)
+			return files[i].ModTime > files[j].ModTime
 		})
 	case SortByNameDesc:
 		collator := collate.New(language.SimplifiedChinese, collate.Numeric, collate.IgnoreCase)

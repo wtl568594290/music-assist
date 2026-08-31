@@ -86,6 +86,11 @@
           value-on-clear="min"
         />
       </el-form-item>
+      <el-form-item label="Sort By">
+        <el-select v-model="selectedSortType" placeholder="Sort Type" class="flex-1">
+          <el-option v-for="item in sortTypeList" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
     </el-form>
     <div class="flex flex-row gap-2">
       <el-button v-show="latestDocPath" type="danger" @click="handleRevoke">Revoke</el-button>
@@ -97,6 +102,8 @@
 </template>
 <script setup lang="ts">
 import { GenerateDoc, OpenDoc, RemoveFile } from '@/wailsjs/go/app/app'
+import { useSortType } from './sortType'
+const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
 const pageCfg = reactive({
   top: 5,
   bottom: 3,
@@ -135,6 +142,7 @@ const handleGenerate = () => {
     CatalogCols: catalogCols.value,
     CatalogFontSize: catalogFontSize.value,
     PageNumberFontSize: pageNumberFontSize.value,
+    SortType: selectedSortType.value,
   })
     .then((path: string) => {
       if (path) {
@@ -171,5 +179,9 @@ function capitalize(str: string): string {
   if (!str) return str
   return str[0].toUpperCase() + str.slice(1)
 }
+
+onMounted(async () => {
+  await sortTypeInit('')
+})
 </script>
 <style scoped></style>

@@ -37,10 +37,14 @@
         <el-tab-pane label="Sources" name="sources" class="h-full">
           <div class="flex flex-col gap-2 h-full">
             <el-button-group>
-              <el-button :icon="FolderAdd" @click="handleChangeSources(() => AddSource(true))" />
-              <el-button :icon="DocumentAdd" @click="handleChangeSources(() => AddSource(false))" />
-              <el-button :icon="Delete" @click="handleChangeSources(() => ClearSources())" />
-              <el-button :icon="Refresh" @click="handleChangeSources(async () => {})" />
+              <el-button
+                v-for="item in actions"
+                :key="item.name"
+                :icon="item.icon"
+                :title="item.info"
+                :type="item.type || undefined"
+                @click="handleChangeSources(item.fn)"
+              />
             </el-button-group>
             <el-scrollbar class="flex-1 min-h-0">
               <div
@@ -79,22 +83,30 @@ import {
   GetBase64,
   GetConfigs,
   GetImages,
-  GetSortTypeList,
   GetSources,
   RemoveSource,
   SetSortType,
 } from '@/wailsjs/go/app/app'
-import { DocumentAdd, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
+import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
 import { app } from '@/wailsjs/go/models'
 import { procImgFilePaths, type Image } from './utils'
 import { onKeyStroke, useThrottleFn } from '@vueuse/core'
-import type { TabPaneName } from 'element-plus'
+import type { ButtonType, TabPaneName } from 'element-plus'
 import { EventsEmit } from '@/wailsjs/runtime/runtime'
+import type { IconPropType } from 'element-plus/es/utils/index.mjs'
+import { useSortType } from './sortType.ts'
+
+interface Actions {
+  icon: IconPropType
+  fn: () => Promise<void>
+  name?: string
+  info: string
+  type?: ButtonType
+}
 
 const THROTTLE_TIME = 50
 
-const sortTypeList = ref<string[]>([])
-const selectedSortType = ref('')
+const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
 const sources = ref<app.Source[]>([])
 const imgs = ref<Image[]>([])
 const searchText = ref('')
@@ -104,6 +116,39 @@ const dialogVisible = ref(false)
 const activeName = ref('sources')
 const titleTips = ref('')
 const showTitleTips = ref(false)
+
+const actions: Actions[] = [
+  {
+    icon: Folder,
+    fn: () => AddSource(true, true),
+    name: 'Add Source (Traversal)',
+    info: 'Add a image folder (traversal)',
+  },
+  {
+    icon: FolderAdd,
+    fn: () => AddSource(true, false),
+    name: 'Add Source',
+    info: 'Add a image folder',
+  },
+  {
+    icon: DocumentAdd,
+    fn: () => AddSource(false, false),
+    name: 'Add Source (Single)',
+    info: 'Add a image file',
+  },
+  {
+    icon: Delete,
+    fn: () => ClearSources(),
+    name: 'Clear Sources',
+    info: 'Clear all sources',
+  },
+  {
+    icon: Refresh,
+    fn: async () => {},
+    name: 'Refresh',
+    info: 'Refresh sources',
+  },
+]
 
 const filteredImgs = computed(() => {
   if (!searchText.value) {
@@ -198,7 +243,6 @@ const handleChangeSortType = async () => {
 }
 
 watch(curIndex, async (newVal, _) => {
-  console.log('curIndex:', newVal)
   const newImg = imgs.value[newVal]
   if (newVal !== -1 && newImg) {
     if (!newImg.base64) {
@@ -236,16 +280,11 @@ const handleWheel = useThrottleFn((e: WheelEvent) => {
 }, THROTTLE_TIME)
 
 onMounted(async () => {
-  sortTypeList.value = (await GetSortTypeList()).sort((a, b) =>
-    a.localeCompare(b, 'zh-CN', { numeric: true }),
-  )
   await handleChangeSources(async () => {})
   const cfg = await GetConfigs()
-  console.log('cfg:', cfg)
-  selectedSortType.value = cfg.SortType
+  await sortTypeInit(cfg.SortType)
   if (imgs.value.length > 0) {
     const latestIndex = cfg.LatestIndex
-    console.log('latestIndex:', latestIndex)
     if (latestIndex !== -1 && curIndex.value != latestIndex) {
       await nextTick()
       curIndex.value = latestIndex
