@@ -45,29 +45,51 @@ type GenerateParams struct {
 	CatalogFontSize    int
 	PageNumberFontSize int
 	SortType           SortType
+	SplitByDir         bool
 }
 
 // PageBottom不设置，因为要显示页数，使用ImageHeightRedundancy来替代它
 var PageTop, PageBottom, PageLeft, PageRight float64 = 5, 3, 20, 5
 var CatalogFontSizePt, PageNumberFontSizePt int = 12, 16
 var maxH, maxW, imgFootSpace, pageNumberFootSPace float64
+var pageSize document.PageSize = document.PageSizeA4
 
-func (a *app) GenerateDoc(params *GenerateParams) (string, error) {
-	imgsPathMap, err := generateImagesMap()
-	if err != nil {
+func createDoc(imgs []FileInfo, catalogCols int, appendName string) (string, error) {
+	// Create new document
+	doc := document.New()
+	doc.SetPageSize(pageSize)
+	doc.SetPageMargins(PageTop, PageRight, PageBottom, PageLeft)
+
+	createCatalog(doc, imgs, catalogCols)
+	doc.AddPageBreak()
+	createImagesDoc(doc, imgs)
+
+	if appendName != "" {
+		appendName = "_" + appendName
+	}
+	docFileName := time.Now().Format("20060102_150405") + appendName + ".docx"
+	if err := doc.Save(docFileName); err != nil {
 		return "", err
 	}
-	if len(imgsPathMap) == 0 {
-		return "", errors.New("No image")
+	cwd, _ := os.Getwd()
+	return filepath.Join(cwd, docFileName), nil
+}
+
+func (a *app) GenerateDoc(params *GenerateParams) ([]string, error) {
+	docs := []string{}
+	imgsPathMap, err := generateImagesMap()
+	if err != nil {
+		return docs, err
 	}
-	imgs := imgsPathMap.ToSlice(params.SortType)
+	if len(imgsPathMap) == 0 {
+		return docs, errors.New("No image")
+	}
 
 	PageTop, PageBottom, PageLeft, PageRight = params.PageTop, params.PageBottom, params.PageLeft, params.PageRight
 	CatalogFontSizePt, PageNumberFontSizePt = params.CatalogFontSize, params.PageNumberFontSize
 	imgFootSpace = ptToMm(ImageParagraphAfter) + ptToMm(ImageParagraphFontSizePt)*ImageParagraphLineMult
 	pageNumberFootSPace = ptToMm(PageNumberSpacePt)*2 + ptToMm(float64(PageNumberFontSizePt))*PageNumberLineMult
 	var pageH, pageW float64 = 297, 210
-	var pageSize document.PageSize = document.PageSizeA4
 	switch params.PageSize {
 	case string(document.PageSizeA3):
 		pageH, pageW, pageSize = 420, 297, document.PageSizeA3
@@ -79,21 +101,38 @@ func (a *app) GenerateDoc(params *GenerateParams) (string, error) {
 	maxH = pageH - PageTop - PageBottom - imgFootSpace - pageNumberFootSPace - HeightRedundancy
 	maxW = pageW - PageLeft - PageRight
 
-	// Create new document
-	doc := document.New()
-	doc.SetPageSize(pageSize)
-	doc.SetPageMargins(PageTop, PageRight, PageBottom, PageLeft)
-
-	createCatalog(doc, imgs, params.CatalogCols)
-	doc.AddPageBreak()
-	createImagesDoc(doc, imgs)
-
-	docFileName := time.Now().Format("20060102_150405") + ".docx"
-	if err := doc.Save(docFileName); err != nil {
-		return "", err
+	imgs := imgsPathMap.ToSlice(params.SortType)
+	if params.SplitByDir {
+		for _, s := range a.GetSources() {
+			if s.IsDir {
+				tarDirImgs := []FileInfo{}
+				j := 0
+				for _, f := range imgs {
+					if f.Dir == s.Path {
+						tarDirImgs = append(tarDirImgs, f)
+					} else {
+						imgs[j] = f
+						j++
+					}
+				}
+				imgs = imgs[:j]
+				doc, err := createDoc(tarDirImgs, params.CatalogCols, filepath.Base(s.Path))
+				if err != nil {
+					continue
+				}
+				docs = append(docs, doc)
+			}
+		}
 	}
-	cwd, _ := os.Getwd()
-	return filepath.Join(cwd, docFileName), nil
+	if len(imgs) > 0 {
+		if doc, err := createDoc(imgs, params.CatalogCols, ""); err == nil {
+			docs = append(docs, doc)
+		}
+	}
+	if len(docs) == 0 {
+		return docs, errors.New("Create document failed")
+	}
+	return docs, nil
 }
 
 //	func (a *app) OpenDoc(path string) error {
@@ -115,12 +154,16 @@ func (a *app) OpenDoc(path string) error {
 	return cmd.Start()
 }
 
-func (a *app) RemoveFile(path string) error {
-	err := os.Remove(path)
-	if err != nil {
-		log.Println(err)
+func (a *app) RemoveFile(paths []string) error {
+	var res error = nil
+	for _, path := range paths {
+		err := os.Remove(path)
+		if err != nil {
+			log.Println(err)
+			res = err
+		}
 	}
-	return err
+	return res
 }
 
 func createCatalog(doc *document.Document, files []FileInfo, cols int) {

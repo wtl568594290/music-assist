@@ -16,6 +16,7 @@ import (
 
 type FileInfo struct {
 	Path     string
+	Dir      string
 	BaseName string
 	Ext      string
 	ModTime  int64
@@ -69,8 +70,10 @@ func (m MapStringFileInfo) Add(path string) error {
 	}
 	baseName := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
 	ext := "." + strings.TrimPrefix(filepath.Ext(entry.Name()), ".")
+	dir := filepath.Dir(path)
 	m[path] = FileInfo{
 		Path:     path,
+		Dir:      dir,
 		BaseName: baseName,
 		Ext:      ext,
 		ModTime:  entry.ModTime().UnixMilli(),

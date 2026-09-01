@@ -91,9 +91,14 @@
           <el-option v-for="item in sortTypeList" :key="item" :label="item" :value="item" />
         </el-select>
       </el-form-item>
+      <el-form-item label="Split By Dir">
+        <el-switch v-model="splitByDir" />
+      </el-form-item>
     </el-form>
     <div class="flex flex-row gap-2">
-      <el-button v-show="latestDocPath" type="danger" @click="handleRevoke">Revoke</el-button>
+      <el-button v-show="latestDocsPath.length" type="danger" @click="handleRevoke"
+        >Revoke</el-button
+      >
       <el-button :loading="isGenerating" type="primary" @click="handleGenerate"
         >Generate Music Doc</el-button
       >
@@ -101,7 +106,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { GenerateDoc, OpenDoc, RemoveFile } from '@/wailsjs/go/app/app'
+import { GenerateDoc, OpenDoc, RemoveFile as RemoveFiles } from '@/wailsjs/go/app/app'
 import { useSortType } from './sortType'
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
 const pageCfg = reactive({
@@ -116,17 +121,19 @@ const catalogCols = ref(3)
 const pageNumberFontSize = ref(16)
 const catalogFontSize = ref(12)
 const isGenerating = ref(false)
-const latestDocPath = ref('')
+const latestDocsPath: Ref<string[]> = ref([])
+const splitByDir = ref(false)
 const handleRevoke = () => {
-  if (latestDocPath.value) {
-    RemoveFile(latestDocPath.value)
+  if (latestDocsPath.value.length) {
+    RemoveFiles(latestDocsPath.value)
       .then(() => {
         ElMessage.success('Revoke success')
-        latestDocPath.value = ''
       })
       .catch((e) => {
-        console.log(e)
         ElMessage.error(e)
+      })
+      .finally(() => {
+        latestDocsPath.value = []
       })
   }
 }
@@ -143,14 +150,15 @@ const handleGenerate = () => {
     CatalogFontSize: catalogFontSize.value,
     PageNumberFontSize: pageNumberFontSize.value,
     SortType: selectedSortType.value,
+    SplitByDir: splitByDir.value,
   })
-    .then((path: string) => {
-      if (path) {
-        latestDocPath.value = path
-        ElMessage({
-          type: 'success',
-          message: h('span', { style: 'color:var(--el-color-success)' }, [
-            'Generate success ',
+    .then((paths: string[]) => {
+      if (paths.length) {
+        latestDocsPath.value = paths
+        const body: any[] = ['Generate success']
+        paths.forEach((path) => {
+          body.push(
+            h('br'),
             h(
               'a',
               {
@@ -161,7 +169,12 @@ const handleGenerate = () => {
               },
               path,
             ),
-          ]),
+          )
+        })
+        ElMessage({
+          type: 'success',
+          message: h('span', { style: 'color:var(--el-color-success)' }, body),
+          duration: 5000,
         })
       }
     })
