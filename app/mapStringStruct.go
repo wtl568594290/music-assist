@@ -21,6 +21,7 @@ type FileInfo struct {
 	Ext      string
 	ModTime  int64
 	Created  int64
+	Size     int64
 }
 
 type SortType string
@@ -78,6 +79,7 @@ func (m MapStringFileInfo) Add(path string) error {
 		Ext:      ext,
 		ModTime:  entry.ModTime().UnixMilli(),
 		Created:  getCreateTime(entry).UnixMilli(),
+		Size:     entry.Size(),
 	}
 	return nil
 }

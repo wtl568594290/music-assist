@@ -216,3 +216,12 @@ func (a *app) GetBase64(path string) (string, error) {
 	base64Str := base64.StdEncoding.EncodeToString(fileBytes)
 	return "data:image/png;base64," + base64Str, nil
 }
+
+func (a *app) GetTotalSize() int64 {
+	a.GetImages()
+	totalSize := int64(0)
+	for _, img := range imgMap {
+		totalSize += img.Size
+	}
+	return totalSize
+}

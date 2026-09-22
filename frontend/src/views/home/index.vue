@@ -84,13 +84,14 @@ import {
   GetConfigs,
   GetImages,
   GetSources,
+  GetTotalSize,
   RemoveSource,
   SetSortType,
 } from '@/wailsjs/go/app/app'
 import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
 import { app } from '@/wailsjs/go/models'
 import { procImgFilePaths, type Image } from './utils'
-import { onKeyStroke, useThrottleFn } from '@vueuse/core'
+import { onKeyStroke, useEventListener, useThrottleFn } from '@vueuse/core'
 import type { ButtonType, TabPaneName } from 'element-plus'
 import { EventsEmit } from '@/wailsjs/runtime/runtime'
 import type { IconPropType } from 'element-plus/es/utils/index.mjs'
@@ -163,6 +164,8 @@ const filteredImgs = computed(() => {
 })
 
 const curPath = computed(() => imgs.value[curIndex.value]?.path || '')
+let latestTotalSize = 0
+let disableFocusUpdate = false
 
 async function updateImages() {
   const lastPath = imgs.value[curIndex.value]?.path || ''
@@ -200,7 +203,14 @@ async function changeSources() {
 }
 
 const handleChangeSources = async (fn: () => Promise<void>) => {
-  await fn()
+  try {
+    disableFocusUpdate = true
+    await fn()
+  } catch (_) {
+    return
+  } finally {
+    disableFocusUpdate = false
+  }
   await changeSources()
 }
 
@@ -278,6 +288,16 @@ const handleWheel = useThrottleFn((e: WheelEvent) => {
     prevImg()
   }
 }, THROTTLE_TIME)
+
+useEventListener('focus', async () => {
+  if (latestTotalSize !== 0 && !disableFocusUpdate && latestTotalSize !== (await GetTotalSize())) {
+    await updateImages()
+    ElMessage.success('Images updated')
+  }
+})
+useEventListener('blur', async () => {
+  latestTotalSize = await GetTotalSize()
+})
 
 onMounted(async () => {
   await handleChangeSources(async () => {})
