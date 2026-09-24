@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	DocSavePath           = "docs"
 	PageNumberSpacePt     = 3
 	PageNumberLineMult    = 1.5
 	PageNumberCellPercent = 0.18
@@ -46,6 +47,12 @@ type GenerateParams struct {
 	PageNumberFontSize int
 	SortType           SortType
 	SplitByDir         bool
+	RemoteUrl          string
+}
+
+type DocSource struct {
+	Imgs []FileInfo
+	Name string
 }
 
 // PageBottom不设置，因为要显示页数，使用ImageHeightRedundancy来替代它
@@ -53,6 +60,32 @@ var PageTop, PageBottom, PageLeft, PageRight float64 = 5, 3, 20, 5
 var CatalogFontSizePt, PageNumberFontSizePt int = 12, 16
 var maxH, maxW, imgFootSpace, pageNumberFootSPace float64
 var pageSize document.PageSize = document.PageSizeA4
+
+func generateDocSources(sources []Source, imgs []FileInfo, splitByDir bool) []DocSource {
+	docSrcs := []DocSource{}
+	if splitByDir {
+		for _, s := range sources {
+			if s.IsDir {
+				tarDirImgs := []FileInfo{}
+				j := 0
+				for _, f := range imgs {
+					if f.Dir == s.Path {
+						tarDirImgs = append(tarDirImgs, f)
+					} else {
+						imgs[j] = f
+						j++
+					}
+				}
+				imgs = imgs[:j]
+				docSrcs = append(docSrcs, DocSource{tarDirImgs, filepath.Base(s.Path)})
+			}
+		}
+	}
+	if len(imgs) > 0 {
+		docSrcs = append(docSrcs, DocSource{imgs, ""})
+	}
+	return docSrcs
+}
 
 func createDoc(imgs []FileInfo, catalogCols int, appendName string) (string, error) {
 	// Create new document
@@ -67,7 +100,7 @@ func createDoc(imgs []FileInfo, catalogCols int, appendName string) (string, err
 	if appendName != "" {
 		appendName = "_" + appendName
 	}
-	docFileName := time.Now().Format("20060102_150405") + appendName + ".docx"
+	docFileName := filepath.Join(DocSavePath, time.Now().Format("20060102_150405")+appendName+".docx")
 	if err := doc.Save(docFileName); err != nil {
 		return "", err
 	}
@@ -101,45 +134,21 @@ func (a *app) GenerateDoc(params *GenerateParams) ([]string, error) {
 	maxH = pageH - PageTop - PageBottom - imgFootSpace - pageNumberFootSPace - HeightRedundancy
 	maxW = pageW - PageLeft - PageRight
 
+	sources := a.GetSources()
 	imgs := imgsPathMap.ToSlice(params.SortType)
-	if params.SplitByDir {
-		for _, s := range a.GetSources() {
-			if s.IsDir {
-				tarDirImgs := []FileInfo{}
-				j := 0
-				for _, f := range imgs {
-					if f.Dir == s.Path {
-						tarDirImgs = append(tarDirImgs, f)
-					} else {
-						imgs[j] = f
-						j++
-					}
-				}
-				imgs = imgs[:j]
-				doc, err := createDoc(tarDirImgs, params.CatalogCols, filepath.Base(s.Path))
-				if err != nil {
-					continue
-				}
-				docs = append(docs, doc)
-			}
-		}
-	}
-	if len(imgs) > 0 {
-		if doc, err := createDoc(imgs, params.CatalogCols, ""); err == nil {
+	docSrcs := generateDocSources(sources, imgs, params.SplitByDir)
+	for _, docSrc := range docSrcs {
+		if doc, err := createDoc(docSrc.Imgs, params.CatalogCols, docSrc.Name); err == nil {
 			docs = append(docs, doc)
 		}
 	}
 	if len(docs) == 0 {
 		return docs, errors.New("Create document failed")
 	}
+	SyncRemote(params.RemoteUrl, docSrcs)
 	return docs, nil
 }
 
-//	func (a *app) OpenDoc(path string) error {
-//		cmd := exec.Command("cmd", "/c", "start", "", path)
-//		return cmd.Start()
-//	}
-//
 // OpenDoc 打开指定路径的文件，无黑框闪烁
 func (a *app) OpenDoc(path string) error {
 	// 创建命令

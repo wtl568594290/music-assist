@@ -95,7 +95,7 @@ import { onKeyStroke, useEventListener, useThrottleFn } from '@vueuse/core'
 import type { ButtonType, TabPaneName } from 'element-plus'
 import { EventsEmit } from '@/wailsjs/runtime/runtime'
 import type { IconPropType } from 'element-plus/es/utils/index.mjs'
-import { useSortType } from './sortType.ts'
+import { useSortType } from './useSortType.ts'
 
 interface Actions {
   icon: IconPropType

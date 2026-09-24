@@ -94,6 +94,12 @@
       <el-form-item label="Split By Dir">
         <el-switch v-model="splitByDir" />
       </el-form-item>
+      <el-form-item label="Sync" for="sync-checkbox">
+        <div class="flex flex-row items-center gap-2 w-75">
+          <el-checkbox v-model="sync" id="sync-checkbox" />
+          <el-input v-show="sync" v-model="remoteUrl" placeholder="Remote URL" />
+        </div>
+      </el-form-item>
     </el-form>
     <div class="flex flex-row gap-2">
       <el-button v-show="latestDocsPath.length" type="danger" @click="handleRevoke"
@@ -106,8 +112,9 @@
   </div>
 </template>
 <script setup lang="ts">
-import { GenerateDoc, OpenDoc, RemoveFile as RemoveFiles } from '@/wailsjs/go/app/app'
-import { useSortType } from './sortType'
+import { GenerateDoc, GetConfigs, OpenDoc, RemoveFile as RemoveFiles } from '@/wailsjs/go/app/app'
+import { useSortType } from './useSortType'
+import { EventsOff, EventsOn } from '@/wailsjs/runtime/runtime'
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
 const pageCfg = reactive({
   top: 5,
@@ -123,6 +130,9 @@ const catalogFontSize = ref(12)
 const isGenerating = ref(false)
 const latestDocsPath: Ref<string[]> = ref([])
 const splitByDir = ref(false)
+const sync = ref(true)
+const remoteUrl = ref('')
+
 const handleRevoke = () => {
   if (latestDocsPath.value.length) {
     RemoveFiles(latestDocsPath.value)
@@ -151,6 +161,7 @@ const handleGenerate = () => {
     PageNumberFontSize: pageNumberFontSize.value,
     SortType: selectedSortType.value,
     SplitByDir: splitByDir.value,
+    RemoteUrl: sync.value ? remoteUrl.value : '',
   })
     .then((paths: string[]) => {
       if (paths.length) {
@@ -188,13 +199,24 @@ const handleGenerate = () => {
     })
 }
 
-function capitalize(str: string): string {
-  if (!str) return str
-  return str[0].toUpperCase() + str.slice(1)
+const syncMsg = (msg: string) => {
+  ElMessage.success(msg)
+}
+const syncMsgError = (msg: string) => {
+  ElMessage.error(msg)
 }
 
 onMounted(async () => {
+  EventsOn('sync-msg', syncMsg)
+  EventsOn('sync-msg-error', syncMsgError)
   await sortTypeInit('')
+  const cfg = await GetConfigs()
+  remoteUrl.value = cfg.RemoteUrl
+})
+
+onUnmounted(() => {
+  EventsOff('sync-msg')
+  EventsOff('sync-msg-error')
 })
 </script>
 <style scoped></style>

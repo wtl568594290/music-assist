@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -17,6 +16,7 @@ type Conf struct {
 	Sources     []string
 	LatestIndex float64
 	SortType    SortType
+	RemoteUrl   string
 }
 
 const (
@@ -53,6 +53,7 @@ func init() {
 		PosY:        -1,
 		LatestIndex: -1,
 		SortType:    SortByName,
+		RemoteUrl:   "https://render-test-zar6.onrender.com",
 	}
 	err = iniFile.MapTo(Config)
 	if err != nil {
@@ -72,10 +73,10 @@ func (c *Conf) Save() error {
 }
 
 func (a *app) GetConfigs() Conf {
-	log.Printf("GetConfigs: %v", Config)
 	viewAbleConfig := Conf{
 		LatestIndex: Config.LatestIndex,
 		SortType:    Config.SortType,
+		RemoteUrl:   Config.RemoteUrl,
 	}
 	return viewAbleConfig
 }
