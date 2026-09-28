@@ -5,3 +5,4 @@ node_modules
 *.code-workspace
 /*.docx
 /.trae
+/music-assist-download

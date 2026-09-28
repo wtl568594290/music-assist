@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	DocSavePath           = "docs"
+	DownloadPath = "music-assist-download"
+
 	PageNumberSpacePt     = 3
 	PageNumberLineMult    = 1.5
 	PageNumberCellPercent = 0.18
@@ -100,7 +101,7 @@ func createDoc(imgs []FileInfo, catalogCols int, appendName string) (string, err
 	if appendName != "" {
 		appendName = "_" + appendName
 	}
-	docFileName := filepath.Join(DocSavePath, time.Now().Format("20060102_150405")+appendName+".docx")
+	docFileName := filepath.Join(DownloadPath, time.Now().Format("20060102_150405")+appendName+".docx")
 	if err := doc.Save(docFileName); err != nil {
 		return "", err
 	}

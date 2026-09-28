@@ -1,8 +1,10 @@
 package app
 
 import (
+	"crypto/md5"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -217,11 +219,12 @@ func (a *app) GetBase64(path string) (string, error) {
 	return "data:image/png;base64," + base64Str, nil
 }
 
-func (a *app) GetTotalSize() int64 {
+func (a *app) GetTotalHash() string {
 	a.GetImages()
-	totalSize := int64(0)
-	for _, img := range imgMap {
-		totalSize += img.Size
+	h := md5.New()
+	for _, img := range imgMap.ToSlice(Config.SortType) {
+		h.Write([]byte(img.Hash))
 	}
-	return totalSize
+	hash := h.Sum(nil)
+	return fmt.Sprintf("%x", hash[:])
 }

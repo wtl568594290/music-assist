@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"os"
@@ -22,6 +23,7 @@ type FileInfo struct {
 	ModTime  int64
 	Created  int64
 	Size     int64
+	Hash     string
 }
 
 type SortType string
@@ -72,14 +74,18 @@ func (m MapStringFileInfo) Add(path string) error {
 	baseName := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
 	ext := "." + strings.TrimPrefix(filepath.Ext(entry.Name()), ".")
 	dir := filepath.Dir(path)
+	modTime := entry.ModTime().UnixMilli()
+	size := entry.Size()
+	hashByte := md5.Sum((fmt.Appendf(nil, "%s|%d|%d", path, modTime, size)))
 	m[path] = FileInfo{
 		Path:     path,
 		Dir:      dir,
 		BaseName: baseName,
 		Ext:      ext,
-		ModTime:  entry.ModTime().UnixMilli(),
+		ModTime:  modTime,
 		Created:  getCreateTime(entry).UnixMilli(),
-		Size:     entry.Size(),
+		Size:     size,
+		Hash:     fmt.Sprintf("%x", hashByte[:]),
 	}
 	return nil
 }

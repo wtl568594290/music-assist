@@ -95,10 +95,7 @@
         <el-switch v-model="splitByDir" />
       </el-form-item>
       <el-form-item label="Sync" for="sync-checkbox">
-        <div class="flex flex-row items-center gap-2 w-75">
-          <el-checkbox v-model="sync" id="sync-checkbox" />
-          <el-input v-show="sync" v-model="remoteUrl" placeholder="Remote URL" />
-        </div>
+        <sync-view id="sync-checkbox" ref="syncViewRef" />
       </el-form-item>
     </el-form>
     <div class="flex flex-row gap-2">
@@ -112,9 +109,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { GenerateDoc, GetConfigs, OpenDoc, RemoveFile as RemoveFiles } from '@/wailsjs/go/app/app'
+import { GenerateDoc, OpenDoc, RemoveFile as RemoveFiles } from '@/wailsjs/go/app/app'
 import { useSortType } from './useSortType'
-import { EventsOff, EventsOn } from '@/wailsjs/runtime/runtime'
+import SyncView from './SyncView.vue'
+
+const syncViewRef = ref<InstanceType<typeof SyncView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
 const pageCfg = reactive({
   top: 5,
@@ -130,8 +129,6 @@ const catalogFontSize = ref(12)
 const isGenerating = ref(false)
 const latestDocsPath: Ref<string[]> = ref([])
 const splitByDir = ref(false)
-const sync = ref(true)
-const remoteUrl = ref('')
 
 const handleRevoke = () => {
   if (latestDocsPath.value.length) {
@@ -161,7 +158,7 @@ const handleGenerate = () => {
     PageNumberFontSize: pageNumberFontSize.value,
     SortType: selectedSortType.value,
     SplitByDir: splitByDir.value,
-    RemoteUrl: sync.value ? remoteUrl.value : '',
+    RemoteUrl: syncViewRef.value?.getRemoteUrl() || '',
   })
     .then((paths: string[]) => {
       if (paths.length) {
@@ -199,24 +196,8 @@ const handleGenerate = () => {
     })
 }
 
-const syncMsg = (msg: string) => {
-  ElMessage.success(msg)
-}
-const syncMsgError = (msg: string) => {
-  ElMessage.error(msg)
-}
-
 onMounted(async () => {
-  EventsOn('sync-msg', syncMsg)
-  EventsOn('sync-msg-error', syncMsgError)
   await sortTypeInit('')
-  const cfg = await GetConfigs()
-  remoteUrl.value = cfg.RemoteUrl
-})
-
-onUnmounted(() => {
-  EventsOff('sync-msg')
-  EventsOff('sync-msg-error')
 })
 </script>
 <style scoped></style>

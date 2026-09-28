@@ -84,7 +84,7 @@ import {
   GetConfigs,
   GetImages,
   GetSources,
-  GetTotalSize,
+  GetTotalHash,
   RemoveSource,
   SetSortType,
 } from '@/wailsjs/go/app/app'
@@ -164,7 +164,7 @@ const filteredImgs = computed(() => {
 })
 
 const curPath = computed(() => imgs.value[curIndex.value]?.path || '')
-let latestTotalSize = 0
+let latestTotalHash = ''
 let disableFocusUpdate = false
 
 async function updateImages() {
@@ -290,13 +290,14 @@ const handleWheel = useThrottleFn((e: WheelEvent) => {
 }, THROTTLE_TIME)
 
 useEventListener('focus', async () => {
-  if (latestTotalSize !== 0 && !disableFocusUpdate && latestTotalSize !== (await GetTotalSize())) {
+  if (latestTotalHash !== '' && !disableFocusUpdate && latestTotalHash !== (await GetTotalHash())) {
     await updateImages()
     ElMessage.success('Images updated')
   }
 })
 useEventListener('blur', async () => {
-  latestTotalSize = await GetTotalSize()
+  latestTotalHash = await GetTotalHash()
+  console.log(latestTotalHash)
 })
 
 onMounted(async () => {
