@@ -62,6 +62,10 @@ var CatalogFontSizePt, PageNumberFontSizePt int = 12, 16
 var maxH, maxW, imgFootSpace, pageNumberFootSPace float64
 var pageSize document.PageSize = document.PageSizeA4
 
+func init() {
+	document.SetGlobalLevel(document.LogLevelWarn)
+}
+
 func generateDocSources(sources []Source, imgs []FileInfo, splitByDir bool) []DocSource {
 	docSrcs := []DocSource{}
 	if splitByDir {

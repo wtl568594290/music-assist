@@ -72,8 +72,10 @@ const syncMsgError = (msg: string) => {
   ElMessage.error(msg)
 }
 
-const handleDownload = async () => {
-  await DownloadRemote(remoteUrl.value)
+const handleDownload = () => {
+  DownloadRemote(remoteUrl.value).catch((err) => {
+    ElMessage.error(err)
+  })
 }
 
 onMounted(async () => {

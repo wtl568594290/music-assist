@@ -2,7 +2,9 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -37,6 +40,17 @@ type SyncProgressBody struct {
 	Cnt   int
 }
 
+type UploadTask struct {
+	Url string
+	Img FileInfo
+}
+
+type DownloadTask struct {
+	Url      string
+	Dir      string
+	FileName string
+}
+
 type SyncMsgType string
 
 const (
@@ -45,15 +59,21 @@ const (
 	SyncMsgError    SyncMsgType = "sync-msg-error"
 )
 
+var syncClient = &http.Client{
+	Transport: &http.Transport{
+		MaxIdleConns:        20,
+		MaxIdleConnsPerHost: 8,
+		MaxConnsPerHost:     8,
+		IdleConnTimeout:     30 * time.Second,
+	},
+}
+
 func newSyncProgress(cnt int, total int) SyncProgressBody {
 	return SyncProgressBody{Total: total, Cnt: cnt}
 }
 
 func emitSyncMsg(msgType SyncMsgType, msg any) {
 	runtime.EventsEmit(App.Ctx, string(msgType), msg)
-}
-func waitMoment() {
-	time.Sleep(50 * time.Millisecond)
 }
 
 func SyncRemote(url string, docSrcs []DocSource) {
@@ -63,7 +83,7 @@ func SyncRemote(url string, docSrcs []DocSource) {
 	if k, err := json.Marshal(docSrcs); err == nil {
 		Config.RemoteUrl = url
 		go func() {
-			resp, err := http.Post(url+"/doc", "application/json", bytes.NewReader(k))
+			resp, err := syncClient.Post(url+"/doc", "application/json", bytes.NewReader(k))
 			if err != nil || resp.StatusCode != http.StatusOK {
 				emitSyncMsg(SyncMsgError, "Sync list error")
 				return
@@ -81,25 +101,33 @@ func SyncRemote(url string, docSrcs []DocSource) {
 				return
 			}
 			emitSyncMsg(SyncMsg, fmt.Sprintf("Sync list success, there are %d images will be uploaded", total))
-			waitMoment()
-			cnt := 0
+			var cnt atomic.Int32
+			tasks := make([]UploadTask, 0, total)
+			emitSyncMsg(SyncMsgProgress, newSyncProgress(0, total))
 			for _, s := range syncRes.Data {
 				for _, v := range docSrcs {
 					for _, img := range v.Imgs {
 						if s.Hash == img.Hash && s.Name == img.BaseName {
-							waitMoment()
-							if err := updateImage(url, img); err == nil {
-								cnt++
-								emitSyncMsg(SyncMsgProgress, newSyncProgress(cnt, total))
-							} else {
-								log.Println(err)
-							}
+							tasks = append(tasks, UploadTask{Url: url, Img: img})
 						}
 					}
 				}
 			}
-			waitMoment()
-			emitSyncMsg(SyncMsg, fmt.Sprintf("Upload complete, %d/%d images success", cnt, total))
+			RunConcurrent(context.Background(), tasks, Options{
+				MaxConcurrent: 8,
+				OnComplete: func(index int, err error) {
+					if err != nil {
+						log.Println(err)
+					} else {
+						cnt.Add(1)
+						emitSyncMsg(SyncMsgProgress, newSyncProgress(int(cnt.Load()), total))
+					}
+				},
+			}, func(task UploadTask) error {
+				return updateImage(task.Url, task.Img)
+			})
+			emitSyncMsg(SyncMsgProgress, newSyncProgress(0, 0))
+			emitSyncMsg(SyncMsg, fmt.Sprintf("Upload complete, %d/%d images success", cnt.Load(), total))
 		}()
 	}
 }
@@ -177,7 +205,7 @@ func (d *DocSource) MarshalJSON() ([]byte, error) {
 }
 
 func downloadFile(url, dir, filename string) error {
-	resp, err := http.Get(url)
+	resp, err := syncClient.Get(url)
 	if err != nil {
 		return err
 	}
@@ -186,11 +214,6 @@ func downloadFile(url, dir, filename string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed, status: %s", resp.Status)
 	}
-	// 创建目录
-	if err = os.MkdirAll(filepath.Join(DownloadPath, dir), 0755); err != nil {
-		return err
-	}
-
 	file, err := os.Create(filepath.Join(DownloadPath, dir, filename))
 	if err != nil {
 		return err
@@ -205,9 +228,13 @@ func downloadFile(url, dir, filename string) error {
 	return nil
 }
 
-func (a *app) DownloadRemote(urlStr string) {
+func (a *app) DownloadRemote(urlStr string) error {
+	if urlStr == "" {
+		return errors.New("Remote url is empty")
+	}
+	Config.RemoteUrl = urlStr
 	go func() {
-		resp, err := http.Get(urlStr + "/doc")
+		resp, err := syncClient.Get(urlStr + "/doc")
 		if err != nil || resp.StatusCode != http.StatusOK {
 			emitSyncMsg(SyncMsgError, "Download list error")
 			return
@@ -224,29 +251,49 @@ func (a *app) DownloadRemote(urlStr string) {
 			total += len(f.ImgBaseNames)
 		}
 		if total == 0 {
-			emitSyncMsg(SyncMsg, "No image to download")
+			emitSyncMsg(SyncMsgError, "No image to download")
 			return
 		}
 		emitSyncMsg(SyncMsg, fmt.Sprintf("Download list success, there are %d images will be downloaded", total))
-		waitMoment()
-		cnt := 0
+		tasks := make([]DownloadTask, 0, total)
+		emitSyncMsg(SyncMsgProgress, newSyncProgress(0, total))
 		for _, f := range fileRes.Data {
+
+			// 创建目录
+			if err = os.MkdirAll(filepath.Join(DownloadPath, f.Name), 0755); err != nil {
+				emitSyncMsg(SyncMsgError, "Create dir error:"+err.Error())
+				return
+			}
+
 			for _, img := range f.ImgBaseNames {
 				q := url.Values{}
 				q.Set("name", img.Name)
 				q.Set("hash", img.Hash)
-				waitMoment()
-				if err := downloadFile(urlStr+"/img?"+q.Encode(), f.Name, img.Name+img.Ext); err != nil {
-					log.Println(err)
-				} else {
-					cnt++
-					emitSyncMsg(SyncMsgProgress, newSyncProgress(cnt, total))
-				}
+				tasks = append(tasks, DownloadTask{
+					Url:      urlStr + "/img?" + q.Encode(),
+					Dir:      f.Name,
+					FileName: img.Name + img.Ext,
+				})
 			}
 		}
-		waitMoment()
-		emitSyncMsg(SyncMsg, fmt.Sprintf("Download complete, %d/%d images success", cnt, total))
+		var cnt atomic.Int32
+		RunConcurrent(context.Background(), tasks, Options{
+			MaxConcurrent: 8,
+			OnComplete: func(index int, err error) {
+				if err != nil {
+					log.Println(err)
+				} else {
+					cnt.Add(1)
+					emitSyncMsg(SyncMsgProgress, newSyncProgress(int(cnt.Load()), total))
+				}
+			},
+		}, func(t DownloadTask) error {
+			return downloadFile(t.Url, t.Dir, t.FileName)
+		})
+		emitSyncMsg(SyncMsgProgress, newSyncProgress(0, 0))
+		emitSyncMsg(SyncMsg, fmt.Sprintf("Download complete, %d/%d images success", int(cnt.Load()), total))
 	}()
+	return nil
 }
 
 func (a *app) PlaceholderSyncProgressBody() SyncProgressBody {
