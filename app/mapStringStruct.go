@@ -1,13 +1,15 @@
 package app
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -15,15 +17,22 @@ import (
 	"golang.org/x/text/language"
 )
 
+type FileChangeFlag struct {
+	ModTime int64
+	Size    int64
+	Hash    string
+}
+
 type FileInfo struct {
 	Path     string
 	Dir      string
 	BaseName string
 	Ext      string
-	ModTime  int64
-	Created  int64
-	Size     int64
-	Hash     string
+	// ModTime  int64
+	Created int64
+	// Size     int64
+	// Hash string
+	FileChangeFlag
 }
 
 type SortType string
@@ -45,6 +54,8 @@ var validSortTypes = map[string]SortType{
 	"Created":     SortByCreated,
 	"CreatedDesc": SortByCreatedDesc,
 }
+var changeMap = map[string]FileChangeFlag{}
+var changeMapMu sync.Mutex
 
 type Source struct {
 	Path  string
@@ -63,6 +74,19 @@ func (m MapStringFileInfo) ToSlice(sortType SortType) []FileInfo {
 	return slice
 }
 
+func fileSha256(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
 func (m MapStringFileInfo) Add(path string) error {
 	entry, err := os.Stat(path)
 	if err != nil {
@@ -75,17 +99,40 @@ func (m MapStringFileInfo) Add(path string) error {
 	ext := "." + strings.TrimPrefix(filepath.Ext(entry.Name()), ".")
 	dir := filepath.Dir(path)
 	modTime := entry.ModTime().UnixMilli()
+	created := getCreateTime(entry).UnixMilli()
 	size := entry.Size()
-	hashByte := md5.Sum((fmt.Appendf(nil, "%s|%d|%d", path, modTime, size)))
+	hash := ""
+	changeMapMu.Lock()
+	change, ok := changeMap[path]
+	if ok && change.Size == size && change.ModTime == modTime {
+		hash = change.Hash
+	}
+	changeMapMu.Unlock()
+
+	if hash == "" {
+		hash, err = fileSha256(path)
+		if err != nil {
+			return err
+		}
+		changeMapMu.Lock()
+		changeMap[path] = FileChangeFlag{
+			ModTime: modTime,
+			Size:    size,
+			Hash:    hash,
+		}
+		changeMapMu.Unlock()
+	}
 	m[path] = FileInfo{
 		Path:     path,
 		Dir:      dir,
 		BaseName: baseName,
 		Ext:      ext,
-		ModTime:  modTime,
-		Created:  getCreateTime(entry).UnixMilli(),
-		Size:     size,
-		Hash:     fmt.Sprintf("%x", hashByte[:]),
+		Created:  created,
+		FileChangeFlag: FileChangeFlag{
+			ModTime: modTime,
+			Size:    size,
+			Hash:    hash,
+		},
 	}
 	return nil
 }

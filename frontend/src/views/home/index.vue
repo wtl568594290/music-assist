@@ -80,18 +80,18 @@ import MusicDocument from './MusicDocument.vue'
 import {
   AddSource,
   ClearSources,
+  DetectChanges,
   GetBase64,
   GetConfigs,
   GetImages,
   GetSources,
-  GetTotalHash,
   RemoveSource,
   SetSortType,
 } from '@/wailsjs/go/app/app'
 import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
 import { app } from '@/wailsjs/go/models'
 import { procImgFilePaths, type Image } from './utils'
-import { onKeyStroke, useEventListener, useThrottleFn } from '@vueuse/core'
+import { onKeyStroke, useDebounceFn, useEventListener, useThrottleFn } from '@vueuse/core'
 import type { ButtonType, TabPaneName } from 'element-plus'
 import { EventsEmit } from '@/wailsjs/runtime/runtime'
 import type { IconPropType } from 'element-plus/es/utils/index.mjs'
@@ -164,8 +164,6 @@ const filteredImgs = computed(() => {
 })
 
 const curPath = computed(() => imgs.value[curIndex.value]?.path || '')
-let latestTotalHash = ''
-let disableFocusUpdate = false
 
 async function updateImages() {
   const lastPath = imgs.value[curIndex.value]?.path || ''
@@ -204,12 +202,9 @@ async function changeSources() {
 
 const handleChangeSources = async (fn: () => Promise<void>) => {
   try {
-    disableFocusUpdate = true
     await fn()
   } catch (_) {
     return
-  } finally {
-    disableFocusUpdate = false
   }
   await changeSources()
 }
@@ -289,15 +284,15 @@ const handleWheel = useThrottleFn((e: WheelEvent) => {
   }
 }, THROTTLE_TIME)
 
-useEventListener('focus', async () => {
-  if (latestTotalHash !== '' && !disableFocusUpdate && latestTotalHash !== (await GetTotalHash())) {
+/** 点击标题栏时会触发两次 */
+const focusUpdateImages = useDebounceFn(async () => {
+  if (await DetectChanges()) {
     await updateImages()
     ElMessage.success('Images updated')
   }
-})
-useEventListener('blur', async () => {
-  latestTotalHash = await GetTotalHash()
-  console.log(latestTotalHash)
+}, 500)
+useEventListener('focus', async () => {
+  await focusUpdateImages()
 })
 
 onMounted(async () => {

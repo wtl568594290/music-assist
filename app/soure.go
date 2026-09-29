@@ -1,7 +1,7 @@
 package app
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	srcs   = NewMapStringBool()
-	imgMap = NewMapStringStruct()
+	srcs       = NewMapStringBool()
+	imgMap     = NewMapStringStruct()
+	latestHash = ""
 )
 
 func isImage(filePath string) (bool, error) {
@@ -207,7 +208,9 @@ func (a *app) GetImages() ([]FileInfo, error) {
 	}
 	// 缓存图片
 	imgMap = mp
-	return imgMap.ToSlice(Config.SortType), nil
+	imgs := imgMap.ToSlice(Config.SortType)
+	latestHash = calcHash(imgs)
+	return imgs, nil
 }
 
 func (a *app) GetBase64(path string) (string, error) {
@@ -219,12 +222,18 @@ func (a *app) GetBase64(path string) (string, error) {
 	return "data:image/png;base64," + base64Str, nil
 }
 
-func (a *app) GetTotalHash() string {
-	a.GetImages()
-	h := md5.New()
-	for _, img := range imgMap.ToSlice(Config.SortType) {
-		h.Write([]byte(img.Hash))
+func calcHash(files []FileInfo) string {
+	h := sha256.New()
+	for _, img := range files {
+		h.Write([]byte(img.BaseName + img.Hash))
 	}
 	hash := h.Sum(nil)
 	return fmt.Sprintf("%x", hash[:])
+}
+
+func (a *app) DetectChanges() bool {
+	m, _ := generateImagesMap()
+	imgs := m.ToSlice(Config.SortType)
+	change := latestHash != "" && calcHash(imgs) != latestHash
+	return change
 }
