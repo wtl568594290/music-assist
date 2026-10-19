@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -27,9 +28,14 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+	notifier := notifications.New()
 	app := application.New(application.Options{
-		Name:     "music-assist",
-		Services: []application.Service{},
+		Name: services.MainWindowTitle,
+		Services: []application.Service{
+			application.NewService(notifier),
+			application.NewService(services.NewSyncService()),
+			application.NewService(services.NewDocumentService()),
+		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
@@ -37,7 +43,8 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
-	app.RegisterService(application.NewService(services.NewAppService(app)))
+	app.RegisterService(application.NewService(services.NewAppService(app, notifier)))
+	app.RegisterService(application.NewService(services.NewSourceService(app)))
 	err := app.Run()
 
 	// If an error occurred while running the application, log it and exit.

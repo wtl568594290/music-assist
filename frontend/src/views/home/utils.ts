@@ -1,4 +1,4 @@
-import { type FileInfo } from '@bindings/musicassist/services'
+import { type FileInfo } from '@bindings/musicassist/tools'
 import pinyin from 'pinyin'
 export interface Image {
   name: string

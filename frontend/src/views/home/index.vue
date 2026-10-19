@@ -78,15 +78,8 @@
 <script setup lang="ts">
 import MusicDocument from './MusicDocument.vue'
 import {
-  AddSource,
   ChangeLatestIndex,
-  ClearSources,
-  DetectChanges,
-  GetBase64,
   GetConfigs,
-  GetImages,
-  GetSources,
-  RemoveSource,
   SetSortType,
 } from '@bindings/musicassist/services/appservice'
 import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
@@ -95,7 +88,16 @@ import { onKeyStroke, useDebounceFn, useEventListener, useThrottleFn } from '@vu
 import type { ButtonType, TabPaneName } from 'element-plus'
 import type { IconPropType } from 'element-plus/es/utils/index.mjs'
 import { useSortType } from './useSortType'
-import type { Source } from '@bindings/musicassist/services/models.ts'
+import {
+  AddSource,
+  ClearSources,
+  DetectChanges,
+  GetBase64,
+  GetImages,
+  GetSources,
+  RemoveSource,
+} from '@bindings/musicassist/services/sourceservice'
+import type { Source } from '@bindings/musicassist/tools'
 
 interface Actions {
   icon: IconPropType

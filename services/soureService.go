@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"musicassist/config"
+	"musicassist/tools"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,11 +15,19 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+type sourceService struct {
+	app *application.App
+}
+
 var (
-	srcs       = NewMapStringBool()
-	imgMap     = NewMapStringStruct()
+	srcs       = tools.NewMapStringBool()
+	imgMap     = tools.NewMapStringStruct()
 	latestHash = ""
 )
+
+func NewSourceService(a *application.App) *sourceService {
+	return &sourceService{app: a}
+}
 
 func isImage(filePath string) (bool, error) {
 	file, err := os.Open(filePath)
@@ -38,7 +48,7 @@ func isImage(filePath string) (bool, error) {
 	return contentType[:6] == "image/", nil
 }
 
-func (as *appService) addImagePath(isTraversal bool) error {
+func addImagePath(app *application.App, isTraversal bool) error {
 	title := "Select a image folder"
 	if isTraversal {
 		title += " (traverse)"
@@ -47,7 +57,7 @@ func (as *appService) addImagePath(isTraversal bool) error {
 		Title:                title,
 		CanChooseDirectories: true,
 	}
-	path, err := as.app.Dialog.OpenFileWithOptions(options).PromptForSingleSelection()
+	path, err := app.Dialog.OpenFileWithOptions(options).PromptForSingleSelection()
 	if err != nil {
 		return err
 	}
@@ -80,7 +90,7 @@ func (as *appService) addImagePath(isTraversal bool) error {
 	return err
 }
 
-func (as *appService) addImageFiles() error {
+func addImageFiles(app *application.App) error {
 	options := &application.OpenFileDialogOptions{
 		Title: "Select image files",
 		Filters: []application.FileFilter{
@@ -110,7 +120,7 @@ func (as *appService) addImageFiles() error {
 			},
 		},
 	}
-	files, err := as.app.Dialog.OpenFileWithOptions(options).PromptForMultipleSelection()
+	files, err := app.Dialog.OpenFileWithOptions(options).PromptForMultipleSelection()
 	if err != nil {
 		return err
 	}
@@ -147,8 +157,8 @@ func resolveSource(paths []string) {
 	}
 }
 
-func generateImagesMap() (MapStringFileInfo, error) {
-	var imgs = NewMapStringStruct()
+func generateImagesMap() (tools.MapStringFileInfo, error) {
+	var imgs = tools.NewMapStringStruct()
 	for path, isDir := range srcs {
 		if isDir {
 			files, err := os.ReadDir(path)
@@ -180,50 +190,11 @@ func generateImagesMap() (MapStringFileInfo, error) {
 	}
 	return imgs, nil
 }
-
-func (as *appService) AddSource(isDir bool, isTraversal bool) error {
-	if isDir {
-		return as.addImagePath(isTraversal)
-	}
-	return as.addImageFiles()
-}
-
-func (as *appService) ClearSources() error {
-	clear(srcs)
-	return nil
-}
-
-func (as *appService) RemoveSource(path string) error {
-	delete(srcs, path)
-	return nil
-}
-func (as *appService) GetSources() []Source {
+func getCurSources() []tools.Source {
 	return srcs.ToSlice()
 }
 
-func (as *appService) GetImages() ([]FileInfo, error) {
-	clear(imgMap)
-	mp, err := generateImagesMap()
-	if err != nil {
-		return mp.ToSlice(Config.SortType), err
-	}
-	// 缓存图片
-	imgMap = mp
-	imgs := imgMap.ToSlice(Config.SortType)
-	latestHash = calcHash(imgs)
-	return imgs, nil
-}
-
-func (as *appService) GetBase64(path string) (string, error) {
-	fileBytes, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	base64Str := base64.StdEncoding.EncodeToString(fileBytes)
-	return "data:image/png;base64," + base64Str, nil
-}
-
-func calcHash(files []FileInfo) string {
+func calcHash(files []tools.FileInfo) string {
 	h := sha256.New()
 	for _, img := range files {
 		h.Write([]byte(img.BaseName + img.Hash))
@@ -232,9 +203,52 @@ func calcHash(files []FileInfo) string {
 	return fmt.Sprintf("%x", hash[:])
 }
 
-func (as *appService) DetectChanges() bool {
+func (ss *sourceService) AddSource(isDir bool, isTraversal bool) error {
+	if isDir {
+		return addImagePath(ss.app, isTraversal)
+	}
+	return addImageFiles(ss.app)
+}
+
+func (ss *sourceService) ClearSources() error {
+	clear(srcs)
+	return nil
+}
+
+func (ss *sourceService) RemoveSource(path string) error {
+	delete(srcs, path)
+	return nil
+}
+func (ss *sourceService) GetSources() []tools.Source {
+	return getCurSources()
+}
+
+func (ss *sourceService) GetImages() ([]tools.FileInfo, error) {
+	clear(imgMap)
+	mp, err := generateImagesMap()
+	if err != nil {
+		return mp.ToSlice(config.GetSortType()), err
+	}
+	// 缓存图片
+	imgMap = mp
+	imgs := imgMap.ToSlice(config.GetSortType())
+	latestHash = calcHash(imgs)
+	return imgs, nil
+}
+
+func (ss *sourceService) GetBase64(path string) (string, error) {
+	fileBytes, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	base64Str := base64.StdEncoding.EncodeToString(fileBytes)
+	return "data:image/png;base64," + base64Str, nil
+}
+
+func (ss *sourceService) DetectChanges() bool {
 	m, _ := generateImagesMap()
-	imgs := m.ToSlice(Config.SortType)
-	change := latestHash != "" && calcHash(imgs) != latestHash
+	imgs := m.ToSlice(config.GetSortType())
+	calcHash := calcHash(imgs)
+	change := latestHash != "" && calcHash != latestHash
 	return change
 }

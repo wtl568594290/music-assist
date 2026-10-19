@@ -1,16 +1,16 @@
-package services
+package tools
 
 import (
 	"context"
 	"sync"
 )
 
-type Result[T any] struct {
+type ConcurrentResult[T any] struct {
 	Item T
 	Err  error
 }
 
-type Options struct {
+type ConcurrentOptions struct {
 	MaxConcurrent int
 
 	// 每个任务完成后调用
@@ -20,9 +20,9 @@ type Options struct {
 func RunConcurrent[T any](
 	ctx context.Context,
 	items []T,
-	options Options,
+	options ConcurrentOptions,
 	fn func(T) error,
-) []Result[T] {
+) []ConcurrentResult[T] {
 
 	if len(items) == 0 {
 		return nil
@@ -38,7 +38,7 @@ func RunConcurrent[T any](
 		maxConcurrent = len(items)
 	}
 
-	results := make([]Result[T], len(items))
+	results := make([]ConcurrentResult[T], len(items))
 	tasks := make(chan int)
 
 	var wg sync.WaitGroup
@@ -62,7 +62,7 @@ func RunConcurrent[T any](
 
 					err := fn(items[index])
 
-					results[index] = Result[T]{
+					results[index] = ConcurrentResult[T]{
 						Item: items[index],
 						Err:  err,
 					}

@@ -109,14 +109,10 @@
   </div>
 </template>
 <script setup lang="ts">
-import {
-  GenerateDoc,
-  OpenDoc,
-  RemoveFile as RemoveFiles,
-} from '@bindings/musicassist/services/appservice'
 import { useSortType } from './useSortType'
 import SyncView from './SyncView.vue'
-import { SortType } from '@bindings/musicassist/services'
+import { GenerateDoc, OpenDoc, RemoveFile } from '@bindings/musicassist/services/documentservice'
+import type { SortType } from '@bindings/musicassist/tools'
 
 const syncViewRef = ref<InstanceType<typeof SyncView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
@@ -137,7 +133,7 @@ const splitByDir = ref(false)
 
 const handleRevoke = () => {
   if (latestDocsPath.value.length) {
-    RemoveFiles(latestDocsPath.value)
+    RemoveFile(latestDocsPath.value)
       .then(() => {
         ElMessage.success('Revoke success')
       })

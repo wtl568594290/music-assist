@@ -1,4 +1,4 @@
-package services
+package tools
 
 import (
 	"crypto/sha256"
@@ -35,25 +35,6 @@ type FileInfo struct {
 	FileChangeFlag
 }
 
-type SortType string
-
-const (
-	SortByName        SortType = "Name"
-	SortByNameDesc    SortType = "NameDesc"
-	SortByModTime     SortType = "ModTime"
-	SortByModTimeDesc SortType = "ModTimeDesc"
-	SortByCreated     SortType = "Created"
-	SortByCreatedDesc SortType = "CreatedDesc"
-)
-
-var validSortTypes = map[string]SortType{
-	"Name":        SortByName,
-	"NameDesc":    SortByNameDesc,
-	"ModTime":     SortByModTime,
-	"ModTimeDesc": SortByModTimeDesc,
-	"Created":     SortByCreated,
-	"CreatedDesc": SortByCreatedDesc,
-}
 var changeMap = map[string]FileChangeFlag{}
 var changeMapMu sync.Mutex
 
@@ -64,6 +45,10 @@ type Source struct {
 
 type MapStringFileInfo map[string]FileInfo
 type MapStringBool map[string]bool
+
+func NewMapStringStruct() MapStringFileInfo {
+	return make(MapStringFileInfo)
+}
 
 func (m MapStringFileInfo) ToSlice(sortType SortType) []FileInfo {
 	slice := make([]FileInfo, 0, len(m))
@@ -137,10 +122,6 @@ func (m MapStringFileInfo) Add(path string) error {
 	return nil
 }
 
-func NewMapStringStruct() MapStringFileInfo {
-	return make(MapStringFileInfo)
-}
-
 func (m MapStringBool) ToSlice() []Source {
 	slice := make([]Source, 0, len(m))
 	for path, isDir := range m {
@@ -200,28 +181,4 @@ func sortFiles(files []FileInfo, sortType SortType) []FileInfo {
 		})
 	}
 	return files
-}
-
-func ParseSortType(s string) (SortType, error) {
-	st, ok := validSortTypes[s]
-	if !ok {
-		return "", fmt.Errorf("invalid SortType: %s", s)
-	}
-	return st, nil
-}
-
-func (as *appService) SetSortType(sort string) {
-	st, err := ParseSortType(sort)
-	if err != nil {
-		st = SortByName
-	}
-	Config.SortType = st
-}
-
-func (as *appService) GetSortTypeList() []string {
-	keys := make([]string, 0, len(validSortTypes))
-	for k := range validSortTypes {
-		keys = append(keys, k)
-	}
-	return keys
 }

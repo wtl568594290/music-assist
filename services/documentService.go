@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"log"
+	"musicassist/tools"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,21 +22,8 @@ import (
 	"golang.org/x/image/bmp"
 )
 
-const (
-	DownloadPath = "music-assist-download"
-
-	PageNumberSpacePt     = 3
-	PageNumberLineMult    = 1.5
-	PageNumberCellPercent = 0.18
-
-	ImageParagraphAfter      = 8
-	ImageParagraphFontSizePt = 10.5
-	ImageParagraphLineMult   = 1.16
-
-	HeightRedundancy = 2
-
-	CatalogLineMult = 1.5
-)
+type documentService struct {
+}
 
 type GenerateParams struct {
 	PageSize           string
@@ -46,19 +34,35 @@ type GenerateParams struct {
 	CatalogCols        int
 	CatalogFontSize    int
 	PageNumberFontSize int
-	SortType           SortType
+	SortType           tools.SortType
 	SplitByDir         bool
 	RemoteUrl          string
 }
 
-type DocSource struct {
-	Imgs []FileInfo
+type docSource struct {
+	Imgs []tools.FileInfo
 	Name string
 }
 
-// PageBottom不设置，因为要显示页数，使用ImageHeightRedundancy来替代它
-var PageTop, PageBottom, PageLeft, PageRight float64 = 5, 3, 20, 5
-var CatalogFontSizePt, PageNumberFontSizePt int = 12, 16
+const (
+	downloadPath = "music-assist-download"
+
+	pageNumberSpacePt     = 3
+	pageNumberLineMult    = 1.5
+	pageNumberCellPercent = 0.18
+
+	imageParagraphAfter      = 8
+	imageParagraphFontSizePt = 10.5
+	imageParagraphLineMult   = 1.16
+
+	heightRedundancy = 2
+
+	catalogLineMult = 1.5
+)
+
+// pageBottom不设置，因为要显示页数，使用ImageHeightRedundancy来替代它
+var pageTop, pageBottom, pageLeft, pageRight float64 = 5, 3, 20, 5
+var catalogFontSizePt, pageNumberFontSizePt int = 12, 16
 var maxH, maxW, imgFootSpace, pageNumberFootSPace float64
 var pageSize document.PageSize = document.PageSizeA4
 
@@ -66,12 +70,16 @@ func init() {
 	document.SetGlobalLevel(document.LogLevelWarn)
 }
 
-func generateDocSources(sources []Source, imgs []FileInfo, splitByDir bool) []DocSource {
-	docSrcs := []DocSource{}
+func NewDocumentService() *documentService {
+	return &documentService{}
+}
+
+func generateDocSources(sources []tools.Source, imgs []tools.FileInfo, splitByDir bool) []docSource {
+	docSrcs := []docSource{}
 	if splitByDir {
 		for _, s := range sources {
 			if s.IsDir {
-				tarDirImgs := []FileInfo{}
+				tarDirImgs := []tools.FileInfo{}
 				j := 0
 				for _, f := range imgs {
 					if f.Dir == s.Path {
@@ -82,21 +90,21 @@ func generateDocSources(sources []Source, imgs []FileInfo, splitByDir bool) []Do
 					}
 				}
 				imgs = imgs[:j]
-				docSrcs = append(docSrcs, DocSource{tarDirImgs, filepath.Base(s.Path)})
+				docSrcs = append(docSrcs, docSource{tarDirImgs, filepath.Base(s.Path)})
 			}
 		}
 	}
 	if len(imgs) > 0 {
-		docSrcs = append(docSrcs, DocSource{imgs, ""})
+		docSrcs = append(docSrcs, docSource{imgs, ""})
 	}
 	return docSrcs
 }
 
-func createDoc(imgs []FileInfo, catalogCols int, appendName string) (string, error) {
+func createDoc(imgs []tools.FileInfo, catalogCols int, appendName string) (string, error) {
 	// Create new document
 	doc := document.New()
 	doc.SetPageSize(pageSize)
-	doc.SetPageMargins(PageTop, PageRight, PageBottom, PageLeft)
+	doc.SetPageMargins(pageTop, pageRight, pageBottom, pageLeft)
 
 	createCatalog(doc, imgs, catalogCols)
 	doc.AddPageBreak()
@@ -105,82 +113,14 @@ func createDoc(imgs []FileInfo, catalogCols int, appendName string) (string, err
 	if appendName != "" {
 		appendName = "_" + appendName
 	}
-	docFileName := filepath.Join(DownloadPath, time.Now().Format("20060102_150405")+appendName+".docx")
+	docFileName := filepath.Join(downloadPath, time.Now().Format("20060102_150405")+appendName+".docx")
 	if err := doc.Save(docFileName); err != nil {
 		return "", err
 	}
 	cwd, _ := os.Getwd()
 	return filepath.Join(cwd, docFileName), nil
 }
-
-func (as *appService) GenerateDoc(params *GenerateParams) ([]string, error) {
-	docs := []string{}
-	imgsPathMap, err := generateImagesMap()
-	if err != nil {
-		return docs, err
-	}
-	if len(imgsPathMap) == 0 {
-		return docs, errors.New("No image")
-	}
-
-	PageTop, PageBottom, PageLeft, PageRight = params.PageTop, params.PageBottom, params.PageLeft, params.PageRight
-	CatalogFontSizePt, PageNumberFontSizePt = params.CatalogFontSize, params.PageNumberFontSize
-	imgFootSpace = ptToMm(ImageParagraphAfter) + ptToMm(ImageParagraphFontSizePt)*ImageParagraphLineMult
-	pageNumberFootSPace = ptToMm(PageNumberSpacePt)*2 + ptToMm(float64(PageNumberFontSizePt))*PageNumberLineMult
-	var pageH, pageW float64 = 297, 210
-	switch params.PageSize {
-	case string(document.PageSizeA3):
-		pageH, pageW, pageSize = 420, 297, document.PageSizeA3
-	case string(document.PageSizeA4):
-		pageH, pageW, pageSize = 297, 210, document.PageSizeA4
-	case string(document.PageSizeA5):
-		pageH, pageW, pageSize = 210, 148, document.PageSizeA5
-	}
-	maxH = pageH - PageTop - PageBottom - imgFootSpace - pageNumberFootSPace - HeightRedundancy
-	maxW = pageW - PageLeft - PageRight
-
-	sources := as.GetSources()
-	imgs := imgsPathMap.ToSlice(params.SortType)
-	docSrcs := generateDocSources(sources, imgs, params.SplitByDir)
-	for _, docSrc := range docSrcs {
-		if doc, err := createDoc(docSrc.Imgs, params.CatalogCols, docSrc.Name); err == nil {
-			docs = append(docs, doc)
-		}
-	}
-	if len(docs) == 0 {
-		return docs, errors.New("Create document failed")
-	}
-	SyncRemote(params.RemoteUrl, docSrcs)
-	return docs, nil
-}
-
-// OpenDoc 打开指定路径的文件，无黑框闪烁
-func (as *appService) OpenDoc(path string) error {
-	// 创建命令
-	cmd := exec.Command("cmd", "/c", "start", "", path)
-
-	// 设置SysProcAttr来隐藏控制台窗口
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow: true, // 关键：隐藏子进程的控制台窗口
-	}
-
-	// 启动命令
-	return cmd.Start()
-}
-
-func (as *appService) RemoveFile(paths []string) error {
-	var res error = nil
-	for _, path := range paths {
-		err := os.Remove(path)
-		if err != nil {
-			log.Println(err)
-			res = err
-		}
-	}
-	return res
-}
-
-func createCatalog(doc *document.Document, files []FileInfo, cols int) {
+func createCatalog(doc *document.Document, files []tools.FileInfo, cols int) {
 	titlePara := doc.AddParagraph("目录")
 	titlePara.SetStyle(style.StyleTitle)
 	datePara := doc.AddParagraph(time.Now().Format("2006-01-02"))
@@ -219,14 +159,14 @@ func createCatalog(doc *document.Document, files []FileInfo, cols int) {
 		for j := range cols {
 			catalogTab.SetCellFormat(i, j, &document.CellFormat{
 				TextFormat: &document.TextFormat{
-					FontSize: CatalogFontSizePt,
+					FontSize: catalogFontSizePt,
 				},
 			})
 		}
 	}
 }
 
-func createImagesDoc(doc *document.Document, files []FileInfo) {
+func createImagesDoc(doc *document.Document, files []tools.FileInfo) {
 	for idx, imgFile := range files {
 		img, err := imaging.Open(imgFile.Path)
 		if err != nil {
@@ -275,7 +215,7 @@ func createImagesDoc(doc *document.Document, files []FileInfo) {
 			continue
 		}
 		rowWidth := ptToTwip(mmToPt(maxW))
-		table, err := doc.AddTable(&document.TableConfig{Cols: 3, Rows: 1, Width: int(rowWidth), ColWidths: []int{int(rowWidth * PageNumberCellPercent), int(rowWidth * (1 - PageNumberCellPercent*2)), int(rowWidth * PageNumberCellPercent)}})
+		table, err := doc.AddTable(&document.TableConfig{Cols: 3, Rows: 1, Width: int(rowWidth), ColWidths: []int{int(rowWidth * pageNumberCellPercent), int(rowWidth * (1 - pageNumberCellPercent*2)), int(rowWidth * pageNumberCellPercent)}})
 		if err != nil {
 			continue
 		}
@@ -297,14 +237,14 @@ func createImagesDoc(doc *document.Document, files []FileInfo) {
 			Rule:   document.RowHeightExact,
 		})
 		table.SetCellFormattedText(0, 2, fmt.Sprintf("- %d -", idx+1), &document.TextFormat{
-			FontSize: PageNumberFontSizePt,
+			FontSize: pageNumberFontSizePt,
 		})
 		table.SetCellFormat(0, 2, &document.CellFormat{
 			HorizontalAlign: document.CellAlignRight,
 			VerticalAlign:   document.CellVAlignBottom,
 		})
 		table.SetCellFormattedText(0, 1, imgFile.BaseName, &document.TextFormat{
-			FontSize: PageNumberFontSizePt,
+			FontSize: pageNumberFontSizePt,
 		})
 		table.SetCellFormat(0, 1, &document.CellFormat{
 			HorizontalAlign: document.CellAlignCenter,
@@ -335,4 +275,71 @@ func mmToPt(mm float64) float64 {
 
 func ptToTwip(pt float64) float64 {
 	return pt * 20
+}
+
+func (ds *documentService) GenerateDoc(params *GenerateParams) ([]string, error) {
+	docs := []string{}
+	imgsPathMap, err := generateImagesMap()
+	if err != nil {
+		return docs, err
+	}
+	if len(imgsPathMap) == 0 {
+		return docs, errors.New("No image")
+	}
+
+	pageTop, pageBottom, pageLeft, pageRight = params.PageTop, params.PageBottom, params.PageLeft, params.PageRight
+	catalogFontSizePt, pageNumberFontSizePt = params.CatalogFontSize, params.PageNumberFontSize
+	imgFootSpace = ptToMm(imageParagraphAfter) + ptToMm(imageParagraphFontSizePt)*imageParagraphLineMult
+	pageNumberFootSPace = ptToMm(pageNumberSpacePt)*2 + ptToMm(float64(pageNumberFontSizePt))*pageNumberLineMult
+	var pageH, pageW float64 = 297, 210
+	switch params.PageSize {
+	case string(document.PageSizeA3):
+		pageH, pageW, pageSize = 420, 297, document.PageSizeA3
+	case string(document.PageSizeA4):
+		pageH, pageW, pageSize = 297, 210, document.PageSizeA4
+	case string(document.PageSizeA5):
+		pageH, pageW, pageSize = 210, 148, document.PageSizeA5
+	}
+	maxH = pageH - pageTop - pageBottom - imgFootSpace - pageNumberFootSPace - heightRedundancy
+	maxW = pageW - pageLeft - pageRight
+
+	sources := getCurSources()
+	imgs := imgsPathMap.ToSlice(params.SortType)
+	docSrcs := generateDocSources(sources, imgs, params.SplitByDir)
+	for _, docSrc := range docSrcs {
+		if doc, err := createDoc(docSrc.Imgs, params.CatalogCols, docSrc.Name); err == nil {
+			docs = append(docs, doc)
+		}
+	}
+	if len(docs) == 0 {
+		return docs, errors.New("Create document failed")
+	}
+	syncRemote(params.RemoteUrl, docSrcs)
+	return docs, nil
+}
+
+// OpenDoc 打开指定路径的文件，无黑框闪烁
+func (ds *documentService) OpenDoc(path string) error {
+	// 创建命令
+	cmd := exec.Command("cmd", "/c", "start", "", path)
+
+	// 设置SysProcAttr来隐藏控制台窗口
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow: true, // 关键：隐藏子进程的控制台窗口
+	}
+
+	// 启动命令
+	return cmd.Start()
+}
+
+func (ds *documentService) RemoveFile(paths []string) error {
+	var res error = nil
+	for _, path := range paths {
+		err := os.Remove(path)
+		if err != nil {
+			log.Println(err)
+			res = err
+		}
+	}
+	return res
 }
