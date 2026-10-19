@@ -1,4 +1,4 @@
-import type { app } from '@/wailsjs/go/models'
+import { type FileInfo } from '@bindings/musicassist/services'
 import pinyin from 'pinyin'
 export interface Image {
   name: string
@@ -27,7 +27,7 @@ function getPinyin(str: string): string {
   return pinyinArray.flat().join('').toLowerCase()
 }
 
-export function procImgFilePaths(list: app.FileInfo[]): Image[] {
+export function procImgFilePaths(list: FileInfo[]): Image[] {
   return list.map((item) => {
     const name = item.BaseName
     return {

@@ -1,14 +1,13 @@
 {
   "name": "music-assist",
-  "version": "0.0.5",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
+    "build:dev": "vite build --minify false --mode development",
+    "build": "vue-tsc && vite build --mode production",
     "preview": "vite preview",
-    "build-only": "vite build",
-    "type-check": "vue-tsc --build --force",
     "format": "prettier --write src/"
   },
   "dependencies": {
@@ -33,7 +32,8 @@
     "unplugin-vue-components": "^0.27.4",
     "vite": "^7.0.0",
     "vite-plugin-vue-devtools": "^7.7.7",
-    "vue-tsc": "^2.2.10"
+    "vue-tsc": "^2.2.10",
+    "@wailsio/runtime": "latest"
   },
   "author": "wtl1989"
 }

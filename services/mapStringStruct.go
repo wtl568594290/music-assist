@@ -1,4 +1,4 @@
-package app
+package services
 
 import (
 	"crypto/sha256"
@@ -210,7 +210,7 @@ func ParseSortType(s string) (SortType, error) {
 	return st, nil
 }
 
-func (a *app) SetSortType(sort string) {
+func (as *appService) SetSortType(sort string) {
 	st, err := ParseSortType(sort)
 	if err != nil {
 		st = SortByName
@@ -218,7 +218,7 @@ func (a *app) SetSortType(sort string) {
 	Config.SortType = st
 }
 
-func (a *app) GetSortTypeList() []string {
+func (as *appService) GetSortTypeList() []string {
 	keys := make([]string, 0, len(validSortTypes))
 	for k := range validSortTypes {
 		keys = append(keys, k)

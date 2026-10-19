@@ -15,10 +15,10 @@
 </template>
 <script setup lang="ts">
 import { Download } from '@element-plus/icons-vue'
-import { DownloadRemote, GetConfigs } from '@/wailsjs/go/app/app'
-import type { app } from '@/wailsjs/go/models'
-import { EventsOff, EventsOn } from '@/wailsjs/runtime/runtime'
+import { DownloadRemote, GetConfigs } from '@bindings/musicassist/services/appservice'
+import { Events } from '@wailsio/runtime'
 import { useThrottleFn } from '@vueuse/core'
+import { type SyncProgressBody } from '@bindings/musicassist/services'
 
 const props = defineProps<{
   id: string
@@ -46,14 +46,14 @@ function getRemoteUrl() {
 }
 
 const throttledMsgUpload = useThrottleFn(
-  (msg: app.SyncProgressBody) => {
+  (msg: SyncProgressBody) => {
     syncUploadBody.value = msg
   },
   100,
   true,
 )
 
-const syncMsgProgress = (msg: app.SyncProgressBody) => {
+const syncMsgProgress = (msg: SyncProgressBody) => {
   throttledMsgUpload(msg)
 }
 
@@ -79,17 +79,23 @@ const handleDownload = () => {
 }
 
 onMounted(async () => {
-  EventsOn('sync-msg', syncMsg)
-  EventsOn('sync-msg-error', syncMsgError)
-  EventsOn('sync-msg-progress', syncMsgProgress)
+  Events.On('sync-msg', (ev) => {
+    syncMsg(ev.data)
+  })
+  Events.On('sync-msg-error', (ev) => {
+    syncMsgError(ev.data)
+  })
+  Events.On('sync-msg-progress', (ev) => {
+    syncMsgProgress(ev.data)
+  })
   const cfg = await GetConfigs()
   remoteUrl.value = cfg.RemoteUrl
 })
 
 onUnmounted(() => {
-  EventsOff('sync-msg')
-  EventsOff('sync-msg-error')
-  EventsOff('sync-msg-progress')
+  Events.Off('sync-msg')
+  Events.Off('sync-msg-error')
+  Events.Off('sync-msg-progress')
 })
 </script>
 <style scoped></style>

@@ -1,4 +1,4 @@
-package app
+package services
 
 import (
 	"bytes"
@@ -113,7 +113,7 @@ func createDoc(imgs []FileInfo, catalogCols int, appendName string) (string, err
 	return filepath.Join(cwd, docFileName), nil
 }
 
-func (a *app) GenerateDoc(params *GenerateParams) ([]string, error) {
+func (as *appService) GenerateDoc(params *GenerateParams) ([]string, error) {
 	docs := []string{}
 	imgsPathMap, err := generateImagesMap()
 	if err != nil {
@@ -139,7 +139,7 @@ func (a *app) GenerateDoc(params *GenerateParams) ([]string, error) {
 	maxH = pageH - PageTop - PageBottom - imgFootSpace - pageNumberFootSPace - HeightRedundancy
 	maxW = pageW - PageLeft - PageRight
 
-	sources := a.GetSources()
+	sources := as.GetSources()
 	imgs := imgsPathMap.ToSlice(params.SortType)
 	docSrcs := generateDocSources(sources, imgs, params.SplitByDir)
 	for _, docSrc := range docSrcs {
@@ -155,7 +155,7 @@ func (a *app) GenerateDoc(params *GenerateParams) ([]string, error) {
 }
 
 // OpenDoc 打开指定路径的文件，无黑框闪烁
-func (a *app) OpenDoc(path string) error {
+func (as *appService) OpenDoc(path string) error {
 	// 创建命令
 	cmd := exec.Command("cmd", "/c", "start", "", path)
 
@@ -168,7 +168,7 @@ func (a *app) OpenDoc(path string) error {
 	return cmd.Start()
 }
 
-func (a *app) RemoveFile(paths []string) error {
+func (as *appService) RemoveFile(paths []string) error {
 	var res error = nil
 	for _, path := range paths {
 		err := os.Remove(path)

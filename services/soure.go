@@ -1,4 +1,4 @@
-package app
+package services
 
 import (
 	"crypto/sha256"
@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var (
@@ -38,15 +38,16 @@ func isImage(filePath string) (bool, error) {
 	return contentType[:6] == "image/", nil
 }
 
-func (a *app) addImagePath(isTraversal bool) error {
+func (as *appService) addImagePath(isTraversal bool) error {
 	title := "Select a image folder"
 	if isTraversal {
 		title += " (traverse)"
 	}
-	options := wailsruntime.OpenDialogOptions{
-		Title: title,
+	options := &application.OpenFileDialogOptions{
+		Title:                title,
+		CanChooseDirectories: true,
 	}
-	path, err := wailsruntime.OpenDirectoryDialog(a.Ctx, options)
+	path, err := as.app.Dialog.OpenFileWithOptions(options).PromptForSingleSelection()
 	if err != nil {
 		return err
 	}
@@ -79,10 +80,10 @@ func (a *app) addImagePath(isTraversal bool) error {
 	return err
 }
 
-func (a *app) addImageFiles() error {
-	options := wailsruntime.OpenDialogOptions{
+func (as *appService) addImageFiles() error {
+	options := &application.OpenFileDialogOptions{
 		Title: "Select image files",
-		Filters: []wailsruntime.FileFilter{
+		Filters: []application.FileFilter{
 			{
 				DisplayName: "jpg, jpeg",
 				Pattern:     "*.jpg;*.jpeg;",
@@ -109,7 +110,7 @@ func (a *app) addImageFiles() error {
 			},
 		},
 	}
-	files, err := wailsruntime.OpenMultipleFilesDialog(a.Ctx, options)
+	files, err := as.app.Dialog.OpenFileWithOptions(options).PromptForMultipleSelection()
 	if err != nil {
 		return err
 	}
@@ -180,27 +181,27 @@ func generateImagesMap() (MapStringFileInfo, error) {
 	return imgs, nil
 }
 
-func (a *app) AddSource(isDir bool, isTraversal bool) error {
+func (as *appService) AddSource(isDir bool, isTraversal bool) error {
 	if isDir {
-		return a.addImagePath(isTraversal)
+		return as.addImagePath(isTraversal)
 	}
-	return a.addImageFiles()
+	return as.addImageFiles()
 }
 
-func (a *app) ClearSources() error {
+func (as *appService) ClearSources() error {
 	clear(srcs)
 	return nil
 }
 
-func (a *app) RemoveSource(path string) error {
+func (as *appService) RemoveSource(path string) error {
 	delete(srcs, path)
 	return nil
 }
-func (a *app) GetSources() []Source {
+func (as *appService) GetSources() []Source {
 	return srcs.ToSlice()
 }
 
-func (a *app) GetImages() ([]FileInfo, error) {
+func (as *appService) GetImages() ([]FileInfo, error) {
 	clear(imgMap)
 	mp, err := generateImagesMap()
 	if err != nil {
@@ -213,7 +214,7 @@ func (a *app) GetImages() ([]FileInfo, error) {
 	return imgs, nil
 }
 
-func (a *app) GetBase64(path string) (string, error) {
+func (as *appService) GetBase64(path string) (string, error) {
 	fileBytes, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -231,7 +232,7 @@ func calcHash(files []FileInfo) string {
 	return fmt.Sprintf("%x", hash[:])
 }
 
-func (a *app) DetectChanges() bool {
+func (as *appService) DetectChanges() bool {
 	m, _ := generateImagesMap()
 	imgs := m.ToSlice(Config.SortType)
 	change := latestHash != "" && calcHash(imgs) != latestHash

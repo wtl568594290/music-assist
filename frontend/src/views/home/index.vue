@@ -79,6 +79,7 @@
 import MusicDocument from './MusicDocument.vue'
 import {
   AddSource,
+  ChangeLatestIndex,
   ClearSources,
   DetectChanges,
   GetBase64,
@@ -87,15 +88,14 @@ import {
   GetSources,
   RemoveSource,
   SetSortType,
-} from '@/wailsjs/go/app/app'
+} from '@bindings/musicassist/services/appservice'
 import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
-import { app } from '@/wailsjs/go/models'
 import { procImgFilePaths, type Image } from './utils'
 import { onKeyStroke, useDebounceFn, useEventListener, useThrottleFn } from '@vueuse/core'
 import type { ButtonType, TabPaneName } from 'element-plus'
-import { EventsEmit } from '@/wailsjs/runtime/runtime'
 import type { IconPropType } from 'element-plus/es/utils/index.mjs'
-import { useSortType } from './useSortType.ts'
+import { useSortType } from './useSortType'
+import type { Source } from '@bindings/musicassist/services/models.ts'
 
 interface Actions {
   icon: IconPropType
@@ -108,7 +108,7 @@ interface Actions {
 const THROTTLE_TIME = 50
 
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
-const sources = ref<app.Source[]>([])
+const sources = ref<Source[]>([])
 const imgs = ref<Image[]>([])
 const searchText = ref('')
 const curIndex = ref(-1)
@@ -167,7 +167,7 @@ const curPath = computed(() => imgs.value[curIndex.value]?.path || '')
 
 async function updateImages() {
   const lastPath = imgs.value[curIndex.value]?.path || ''
-  const list = await GetImages()
+  const list = (await GetImages()) || []
   imgs.value = procImgFilePaths(list)
   if (imgs.value.length > 0) {
     if (curIndex.value === -1) {
@@ -193,7 +193,7 @@ async function updateImages() {
 }
 
 async function changeSources() {
-  sources.value = (await GetSources()).sort(
+  sources.value = ((await GetSources()) || []).sort(
     (a, b) =>
       Number(b.IsDir) - Number(a.IsDir) || a.Path.localeCompare(b.Path, 'zh-CN', { numeric: true }),
   )
@@ -270,7 +270,8 @@ watch(curIndex, async (newVal, _) => {
     curSrc.value = ''
   }
 
-  EventsEmit('index-change', newVal)
+  // Events.Emit('index-change', newVal)
+  ChangeLatestIndex(newVal)
 })
 
 const stopKeyLeft = onKeyStroke('ArrowLeft', useThrottleFn(prevImg, THROTTLE_TIME))

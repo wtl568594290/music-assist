@@ -2,82 +2,45 @@ package main
 
 import (
 	"embed"
-	"log"
-	"music-assist/app"
+	"musicassist/services"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/logger"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	"log"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+// Wails uses Go's `embed` package to embed the frontend files into the binary.
+// Any files in the frontend/dist folder will be embedded into the binary and
+// made available to the frontend.
+// See https://pkg.go.dev/embed for more information.
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
-//go:embed build/appicon.png
-var icon []byte
-
+// main function serves as the application's entry point. It initializes the application, creates a window,
+// and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
+// logs any error that might occur.
 func main() {
-	// Create an instance of the app structure
-	appInstance := app.App
 
-	// Create application with options
-	err := wails.Run(&options.App{
-		Title:             "music-assist",
-		Width:             1024,
-		Height:            768,
-		DisableResize:     false,
-		Fullscreen:        false,
-		Frameless:         false,
-		StartHidden:       false,
-		HideWindowOnClose: false,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
+	// Create a new Wails application by providing the necessary options.
+	// Variables 'Name' and 'Description' are for application metadata.
+	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
+	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
+	// 'Mac' options tailor the application when running an macOS.
+	app := application.New(application.Options{
+		Name:     "music-assist",
+		Services: []application.Service{},
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
 		},
-		Menu:             nil,
-		Logger:           nil,
-		LogLevel:         logger.DEBUG,
-		OnStartup:        appInstance.Startup,
-		OnDomReady:       appInstance.DomReady,
-		OnBeforeClose:    appInstance.BeforeClose,
-		OnShutdown:       appInstance.Shutdown,
-		WindowStartState: options.Normal,
-		Bind: []interface{}{
-			appInstance,
-		},
-		// Windows platform specific options
-		Windows: &windows.Options{
-			WebviewIsTransparent: false,
-			WindowIsTranslucent:  false,
-			DisableWindowIcon:    false,
-			// DisableFramelessWindowDecorations: false,
-			WebviewUserDataPath: "",
-			ZoomFactor:          1.0,
-			Theme:               windows.Dark,
-		},
-		// Mac platform specific options
-		Mac: &mac.Options{
-			TitleBar: &mac.TitleBar{
-				TitlebarAppearsTransparent: true,
-				HideTitle:                  false,
-				HideTitleBar:               false,
-				FullSizeContent:            false,
-				UseToolbar:                 false,
-				HideToolbarSeparator:       true,
-			},
-			Appearance:           mac.NSAppearanceNameDarkAqua,
-			WebviewIsTransparent: true,
-			WindowIsTranslucent:  true,
-			About: &mac.AboutInfo{
-				Title:   "music-assist",
-				Message: "",
-				Icon:    icon,
-			},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+	app.RegisterService(application.NewService(services.NewAppService(app)))
+	err := app.Run()
 
+	// If an error occurred while running the application, log it and exit.
 	if err != nil {
 		log.Fatal(err)
 	}

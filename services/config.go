@@ -1,4 +1,4 @@
-package app
+package services
 
 import (
 	"errors"
@@ -72,7 +72,7 @@ func (c *Conf) Save() error {
 	return iniFile.SaveTo(configPath)
 }
 
-func (a *app) GetConfigs() Conf {
+func (as *appService) GetConfigs() Conf {
 	viewAbleConfig := Conf{
 		LatestIndex: Config.LatestIndex,
 		SortType:    Config.SortType,

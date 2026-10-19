@@ -1,4 +1,12 @@
-build/bin
+.task
+bin
+frontend/dist
+frontend/node_modules
+frontend/bindings
+
+build/*/
+!build/windows
+
 node_modules
 *.doc
 *.docx

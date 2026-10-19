@@ -1,4 +1,4 @@
-package app
+package services
 
 import (
 	"bytes"
@@ -15,8 +15,6 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type syncRes[T any] struct {
@@ -73,7 +71,7 @@ func newSyncProgress(cnt int, total int) SyncProgressBody {
 }
 
 func emitSyncMsg(msgType SyncMsgType, msg any) {
-	runtime.EventsEmit(App.Ctx, string(msgType), msg)
+	mainWin.EmitEvent(string(msgType), msg)
 }
 
 func SyncRemote(url string, docSrcs []DocSource) {
@@ -228,7 +226,7 @@ func downloadFile(url, dir, filename string) error {
 	return nil
 }
 
-func (a *app) DownloadRemote(urlStr string) error {
+func (as *appService) DownloadRemote(urlStr string) error {
 	if urlStr == "" {
 		return errors.New("Remote url is empty")
 	}
@@ -296,6 +294,6 @@ func (a *app) DownloadRemote(urlStr string) error {
 	return nil
 }
 
-func (a *app) PlaceholderSyncProgressBody() SyncProgressBody {
+func (as *appService) PlaceholderSyncProgressBody() SyncProgressBody {
 	return SyncProgressBody{}
 }

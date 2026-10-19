@@ -109,9 +109,14 @@
   </div>
 </template>
 <script setup lang="ts">
-import { GenerateDoc, OpenDoc, RemoveFile as RemoveFiles } from '@/wailsjs/go/app/app'
+import {
+  GenerateDoc,
+  OpenDoc,
+  RemoveFile as RemoveFiles,
+} from '@bindings/musicassist/services/appservice'
 import { useSortType } from './useSortType'
 import SyncView from './SyncView.vue'
+import { SortType } from '@bindings/musicassist/services'
 
 const syncViewRef = ref<InstanceType<typeof SyncView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
@@ -156,11 +161,14 @@ const handleGenerate = () => {
     CatalogCols: catalogCols.value,
     CatalogFontSize: catalogFontSize.value,
     PageNumberFontSize: pageNumberFontSize.value,
-    SortType: selectedSortType.value,
+    SortType: selectedSortType.value as SortType,
     SplitByDir: splitByDir.value,
     RemoteUrl: syncViewRef.value?.getRemoteUrl() || '',
   })
-    .then((paths: string[]) => {
+    .then((paths: string[] | null) => {
+      if (!paths) {
+        return
+      }
       if (paths.length) {
         latestDocsPath.value = paths
         const body: any[] = ['Generate success']
