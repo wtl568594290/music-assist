@@ -108,7 +108,6 @@ const features = [
   { icon: Document, text: 'Docx Generation' },
   { icon: Download, text: 'Remote Sync' },
   { icon: Refresh, text: 'Auto Update' },
-  { icon: Monitor, text: 'Server Mode' },
 ]
 
 const techStack = [

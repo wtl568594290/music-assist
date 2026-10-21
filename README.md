@@ -35,10 +35,6 @@ Built with **Go + Wails v3** on the backend and **Vue 3 + TypeScript + Element P
   - Custom Gitee Releases provider with progress and speed display
   - Manual check from the About tab, automatic check every 2 hours
 
-- **Server Mode**
-  - Run headless as a pure HTTP server (no GUI)
-  - Docker image build & run supported
-
 ## Tech Stack
 
 | Layer    | Technology                                                            |
