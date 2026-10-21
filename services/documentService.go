@@ -45,8 +45,6 @@ type docSource struct {
 }
 
 const (
-	downloadPath = "music-assist-download"
-
 	pageNumberSpacePt     = 3
 	pageNumberLineMult    = 1.5
 	pageNumberCellPercent = 0.18
@@ -59,6 +57,8 @@ const (
 
 	catalogLineMult = 1.5
 )
+
+var downloadPath = tools.ProjectName + "-download"
 
 // pageBottom不设置，因为要显示页数，使用ImageHeightRedundancy来替代它
 var pageTop, pageBottom, pageLeft, pageRight float64 = 5, 3, 20, 5

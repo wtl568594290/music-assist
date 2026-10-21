@@ -63,6 +63,9 @@
             <MusicDocument />
           </el-scrollbar>
         </el-tab-pane>
+        <el-tab-pane label="About" name="about" class="h-full">
+          <about-view @VersionClick="updateViewRef?.manualCheckUpdate()" />
+        </el-tab-pane>
         <el-tab-pane label="Close" name="close"></el-tab-pane>
       </el-tabs>
     </el-dialog>
@@ -74,9 +77,13 @@
       {{ titleTips }}
     </div>
   </div>
+  <update-view ref="updateViewRef" />
 </template>
 <script setup lang="ts">
 import MusicDocument from './MusicDocument.vue'
+import UpdateView from './UpdateView.vue'
+import AboutView from './AboutView.vue'
+
 import {
   ChangeLatestIndex,
   GetConfigs,
@@ -108,7 +115,7 @@ interface Actions {
 }
 
 const THROTTLE_TIME = 50
-
+const updateViewRef = ref<InstanceType<typeof UpdateView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
 const sources = ref<Source[]>([])
 const imgs = ref<Image[]>([])

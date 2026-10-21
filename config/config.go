@@ -33,7 +33,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	appDir := filepath.Join(userDir, "music-assist")
+	appDir := filepath.Join(userDir, tools.ProjectName)
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
 		os.Mkdir(appDir, 0755)
 	}

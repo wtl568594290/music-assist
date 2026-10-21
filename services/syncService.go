@@ -16,7 +16,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
-	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -68,15 +67,6 @@ const (
 	notificationSyncUploadCompleteTitle   = "Sync upload complete"
 )
 
-var syncClient = &http.Client{
-	Transport: &http.Transport{
-		MaxIdleConns:        20,
-		MaxIdleConnsPerHost: 8,
-		MaxConnsPerHost:     8,
-		IdleConnTimeout:     30 * time.Second,
-	},
-}
-
 func init() {
 	application.RegisterEvent[string](string(SyncMsg))
 	application.RegisterEvent[SyncProgressBody](string(SyncMsgProgress))
@@ -106,7 +96,7 @@ func syncRemote(url string, docSrcs []docSource) {
 	if k, err := json.Marshal(docSrcs); err == nil {
 		config.SetRemoteUrl(url)
 		go func() {
-			resp, err := syncClient.Post(url+"/doc", "application/json", bytes.NewReader(k))
+			resp, err := tools.HttpClient.Post(url+"/doc", "application/json", bytes.NewReader(k))
 			if err != nil || resp.StatusCode != http.StatusOK {
 				emitSyncMsg(SyncMsgError, "Sync list error")
 				return
@@ -232,7 +222,7 @@ func (d *docSource) MarshalJSON() ([]byte, error) {
 }
 
 func downloadFile(url, dir, filename string) error {
-	resp, err := syncClient.Get(url)
+	resp, err := tools.HttpClient.Get(url)
 	if err != nil {
 		return err
 	}
@@ -261,7 +251,7 @@ func (syncs *syncService) DownloadRemote(urlStr string) error {
 	}
 	config.SetRemoteUrl(urlStr)
 	go func() {
-		resp, err := syncClient.Get(urlStr + "/doc")
+		resp, err := tools.HttpClient.Get(urlStr + "/doc")
 		if err != nil || resp.StatusCode != http.StatusOK {
 			emitSyncMsg(SyncMsgError, "Download list error")
 			return

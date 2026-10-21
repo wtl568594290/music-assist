@@ -28,9 +28,10 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+
 	notifier := notifications.New()
 	app := application.New(application.Options{
-		Name: services.MainWindowTitle,
+		Name: staticConfig.ProductName(),
 		Services: []application.Service{
 			application.NewService(notifier),
 			application.NewService(services.NewSyncService()),
@@ -43,8 +44,10 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
-	app.RegisterService(application.NewService(services.NewAppService(app, notifier)))
+	app.RegisterService(application.NewService(services.NewAppService(app, notifier, staticConfig)))
 	app.RegisterService(application.NewService(services.NewSourceService(app)))
+	app.RegisterService(application.NewService(services.NewUpdateService(app)))
+
 	err := app.Run()
 
 	// If an error occurred while running the application, log it and exit.

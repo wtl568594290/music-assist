@@ -7,11 +7,11 @@ version: "3"
 info:
   companyName: "wtl1989" # The name of the company
   productName: "Music assist" # The name of the application
-  productIdentifier: "com.wtl1989.music-assist" # The unique product identifier
-  description: "Music assist" # The application description
+  productIdentifier: "com.wtl1989.musicassist" # The unique product identifier
+  description: "Numbered Music Notation Manager" # The application description
   copyright: "Copyright ©2026 wtl1989" # Copyright text
-  comments: "Music assist" # Comments
-  version: "2.0.1" # The application version
+  comments: "Browse sheet music images, export printable DOCX files, search by name or Pinyin, sort, detect file changes, sync remotely, and update online." # Comments
+  version: "2.0.0" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension
   #                               # If not set and Assets.car exists, defaults to "appicon"

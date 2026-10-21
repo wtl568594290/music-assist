@@ -1,5 +1,5 @@
 import { type FileInfo } from '@bindings/musicassist/tools'
-import pinyin from 'pinyin'
+import pinyin from 'tiny-pinyin'
 export interface Image {
   name: string
   pyletter: string
@@ -8,32 +8,31 @@ export interface Image {
   base64?: string
 }
 
-// 获取中文字符串的首字母
-function getFirstLetter(str: string): string {
-  const pinyinArray = pinyin(str, {
-    style: pinyin.STYLE_FIRST_LETTER, // 只获取首字母
-    heteronym: false, // 不处理多音字
-  })
-
-  return pinyinArray.flat().join('').toLowerCase()
-}
 // 获取中文字符串的拼音
-function getPinyin(str: string): string {
-  const pinyinArray = pinyin(str, {
-    style: pinyin.STYLE_NORMAL, // 获取完整拼音
-    heteronym: false, // 不处理多音字
-  })
-
-  return pinyinArray.flat().join('').toLowerCase()
+function getPinyin(str: string): { firstLetter: string; all: string } {
+  if (pinyin.isSupported()) {
+    let firstLetter = ''
+    let all = ''
+    pinyin.parse(str).forEach((token) => {
+      const word = token.target
+      if (word.length > 0) {
+        firstLetter += word[0].toLowerCase()
+      }
+      all += word.toLowerCase()
+    })
+    return { firstLetter, all }
+  }
+  return { firstLetter: str, all: str }
 }
 
 export function procImgFilePaths(list: FileInfo[]): Image[] {
   return list.map((item) => {
     const name = item.BaseName
+    const { firstLetter, all } = getPinyin(name)
     return {
       name: name,
-      pyletter: getFirstLetter(name),
-      py: getPinyin(name),
+      pyletter: firstLetter,
+      py: all,
       path: item.Path,
     }
   })

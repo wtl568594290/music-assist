@@ -14,3 +14,4 @@ node_modules
 /*.docx
 /.trae
 /music-assist-download
+.env

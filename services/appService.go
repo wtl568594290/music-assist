@@ -12,13 +12,12 @@ import (
 
 // App struct
 type appService struct {
-	app      *application.App
-	notifier *notifications.NotificationService
+	app          *application.App
+	notifier     *notifications.NotificationService
+	staticConfig *tools.StaticConfig
 }
 
 const (
-	MainWindowTitle = "Music assist"
-
 	maxRequestNotificationCnt = 3
 )
 
@@ -26,11 +25,11 @@ var requestNotificationCnt int = 0
 var globalApp *appService
 var mainWin *application.WebviewWindow
 
-func NewAppService(a *application.App, notifier *notifications.NotificationService) *appService {
+func NewAppService(a *application.App, notifier *notifications.NotificationService, staticConfig *tools.StaticConfig) *appService {
 	if globalApp != nil {
 		return globalApp
 	}
-	globalApp = &appService{app: a, notifier: notifier}
+	globalApp = &appService{app: a, notifier: notifier, staticConfig: staticConfig}
 	return globalApp
 }
 
@@ -69,12 +68,15 @@ func (as *appService) ServiceStartup(ctx context.Context, options application.Se
 	}
 	if mainWin == nil {
 		mainWin = as.app.Window.NewWithOptions(application.WebviewWindowOptions{
-			Title: MainWindowTitle,
+			Title: as.app.Config().Name,
 			// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
 			Width:  w,
 			Height: h,
 			X:      x,
 			Y:      y,
+			Windows: application.WindowsWindow{
+				Theme: application.Dark,
+			},
 			Mac: application.MacWindow{
 				InvisibleTitleBarHeight: 50,
 				Backdrop:                application.MacBackdropTranslucent,
@@ -126,4 +128,8 @@ func (as *appService) SetSortType(sort string) {
 
 func (as *appService) GetSortTypeList() []string {
 	return tools.GetSortTypeList()
+}
+
+func (as *appService) GetStaticConfig() *tools.StaticConfig {
+	return as.staticConfig
 }
