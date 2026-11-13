@@ -194,7 +194,7 @@ func updateImage(url string, img tools.FileInfo) error {
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := tools.HttpClient.Do(req)
 	if err != nil {
 		return err
 	}
