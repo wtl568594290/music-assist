@@ -1,4 +1,4 @@
-package tools
+package common
 
 import (
 	"crypto/sha256"
@@ -17,34 +17,10 @@ import (
 	"golang.org/x/text/language"
 )
 
-type FileChangeFlag struct {
-	ModTime int64
-	Size    int64
-	Hash    string
-}
-
-type FileInfo struct {
-	Path     string
-	Dir      string
-	BaseName string
-	Ext      string
-	// ModTime  int64
-	Created int64
-	// Size     int64
-	// Hash string
-	FileChangeFlag
-}
+type MapStringFileInfo map[string]FileInfo
 
 var changeMap = map[string]FileChangeFlag{}
 var changeMapMu sync.Mutex
-
-type Source struct {
-	Path  string
-	IsDir bool
-}
-
-type MapStringFileInfo map[string]FileInfo
-type MapStringBool map[string]bool
 
 func NewMapStringStruct() MapStringFileInfo {
 	return make(MapStringFileInfo)
@@ -57,19 +33,6 @@ func (m MapStringFileInfo) ToSlice(sortType SortType) []FileInfo {
 	}
 	slice = sortFiles(slice, sortType)
 	return slice
-}
-
-func fileSha256(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 func (m MapStringFileInfo) Add(path string) error {
@@ -122,28 +85,17 @@ func (m MapStringFileInfo) Add(path string) error {
 	return nil
 }
 
-func (m MapStringBool) ToSlice() []Source {
-	slice := make([]Source, 0, len(m))
-	for path, isDir := range m {
-		slice = append(slice, Source{
-			Path:  path,
-			IsDir: isDir,
-		})
+func fileSha256(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
 	}
-	return slice
-}
-
-func (m MapStringBool) Add(path string, isDir bool) bool {
-	_, ok := m[path]
-	if ok {
-		return false
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
 	}
-	m[path] = isDir
-	return true
-}
-
-func NewMapStringBool() MapStringBool {
-	return make(MapStringBool)
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 func getCreateTime(info os.FileInfo) time.Time {

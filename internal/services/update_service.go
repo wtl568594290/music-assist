@@ -3,8 +3,9 @@ package services
 import (
 	"context"
 	"log"
-	"musicassist/tools"
-	"musicassist/updater"
+	"musicassist/internal/config"
+	"musicassist/internal/tools"
+	"musicassist/internal/updater"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,30 +33,30 @@ func init() {
 
 func NewUpdateService(app *application.App) *updateService {
 	giteeProvider := &updater.GiteeProvider{
-		Repo:       tools.ProjectName,
+		Repo:       config.ProjectName,
 		Owner:      "wtl1989",
 		HTTPClient: tools.HttpClient,
 		AssetsMatcher: func(req wailsupdater.CheckRequest, assets []updater.GiteeAsset) int {
 			for i, a := range assets {
 				name := strings.ToLower(a.Name)
-				if strings.Contains(name, globalApp.staticConfig.ExeName()+".exe") {
+				if strings.Contains(name, config.GenConfig.ExeName()+".exe") {
 					return i
 				}
 			}
 			return -1
 		},
-		AccessToken: tools.Env.GiteeAccessToken,
+		AccessToken: config.GenConfig.Env.GiteeAccessToken,
 	}
 	providers := []wailsupdater.Provider{giteeProvider}
 	githubProvier, err := github.New(github.Config{
-		Repository: "wtl568594290/" + tools.ProjectName,
-		Token:      tools.Env.GithubAccessToken,
+		Repository: "wtl568594290/" + config.ProjectName,
+		Token:      config.GenConfig.Env.GithubAccessToken,
 		Prerelease: false,
 		BaseURL:    "",
 		AssetMatcher: func(req wailsupdater.CheckRequest, assets []github.ReleaseAsset) int {
 			for i, a := range assets {
 				name := strings.ToLower(a.Name)
-				if strings.Contains(name, globalApp.staticConfig.ExeName()+".exe") {
+				if strings.Contains(name, config.GenConfig.ExeName()+".exe") {
 					return i
 				}
 			}
@@ -71,7 +72,7 @@ func NewUpdateService(app *application.App) *updateService {
 	}
 
 	if err := app.Updater.Init(wailsupdater.Config{
-		CurrentVersion: globalApp.staticConfig.Version(),
+		CurrentVersion: config.GenConfig.Version(),
 		Providers:      providers,
 		Window:         wailsupdater.WindowNone,
 	}); err != nil {
@@ -106,7 +107,7 @@ func removeUpdateTmpFiles() {
 		shouldDel := len(children) == 0
 		for _, child := range children {
 			childName := child.Name()
-			if !child.IsDir() && (strings.Contains(childName, globalApp.staticConfig.ExeName()+".exe") ||
+			if !child.IsDir() && (strings.Contains(childName, config.GenConfig.ExeName()+".exe") ||
 				strings.Contains(childName, ".artifact")) {
 				shouldDel = true
 				break

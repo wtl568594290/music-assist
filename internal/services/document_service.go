@@ -7,7 +7,8 @@ import (
 	"image/jpeg"
 	"image/png"
 	"log"
-	"musicassist/tools"
+	"musicassist/internal/common"
+	"musicassist/internal/config"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,13 +35,13 @@ type GenerateParams struct {
 	CatalogCols        int
 	CatalogFontSize    int
 	PageNumberFontSize int
-	SortType           tools.SortType
+	SortType           common.SortType
 	SplitByDir         bool
 	RemoteUrl          string
 }
 
 type docSource struct {
-	Imgs []tools.FileInfo
+	Imgs []common.FileInfo
 	Name string
 }
 
@@ -58,7 +59,7 @@ const (
 	catalogLineMult = 1.5
 )
 
-var downloadPath = tools.ProjectName + "-download"
+var downloadPath = config.ProjectName + "-download"
 
 // pageBottom不设置，因为要显示页数，使用ImageHeightRedundancy来替代它
 var pageTop, pageBottom, pageLeft, pageRight float64 = 5, 3, 20, 5
@@ -74,12 +75,12 @@ func NewDocumentService() *documentService {
 	return &documentService{}
 }
 
-func generateDocSources(sources []tools.Source, imgs []tools.FileInfo, splitByDir bool) []docSource {
+func generateDocSources(sources []common.Source, imgs []common.FileInfo, splitByDir bool) []docSource {
 	docSrcs := []docSource{}
 	if splitByDir {
 		for _, s := range sources {
 			if s.IsDir {
-				tarDirImgs := []tools.FileInfo{}
+				tarDirImgs := []common.FileInfo{}
 				j := 0
 				for _, f := range imgs {
 					if f.Dir == s.Path {
@@ -100,7 +101,7 @@ func generateDocSources(sources []tools.Source, imgs []tools.FileInfo, splitByDi
 	return docSrcs
 }
 
-func createDoc(imgs []tools.FileInfo, catalogCols int, appendName string) (string, error) {
+func createDoc(imgs []common.FileInfo, catalogCols int, appendName string) (string, error) {
 	// Create new document
 	doc := document.New()
 	doc.SetPageSize(pageSize)
@@ -120,7 +121,7 @@ func createDoc(imgs []tools.FileInfo, catalogCols int, appendName string) (strin
 	cwd, _ := os.Getwd()
 	return filepath.Join(cwd, docFileName), nil
 }
-func createCatalog(doc *document.Document, files []tools.FileInfo, cols int) {
+func createCatalog(doc *document.Document, files []common.FileInfo, cols int) {
 	titlePara := doc.AddParagraph("目录")
 	titlePara.SetStyle(style.StyleTitle)
 	datePara := doc.AddParagraph(time.Now().Format("2006-01-02"))
@@ -166,7 +167,7 @@ func createCatalog(doc *document.Document, files []tools.FileInfo, cols int) {
 	}
 }
 
-func createImagesDoc(doc *document.Document, files []tools.FileInfo) {
+func createImagesDoc(doc *document.Document, files []common.FileInfo) {
 	for idx, imgFile := range files {
 		img, err := imaging.Open(imgFile.Path)
 		if err != nil {

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"musicassist/config"
-	"musicassist/tools"
+	"musicassist/internal/common"
+	"musicassist/internal/config"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,8 +20,8 @@ type sourceService struct {
 }
 
 var (
-	srcs       = tools.NewMapStringBool()
-	imgMap     = tools.NewMapStringStruct()
+	srcs       = common.NewMapStringBool()
+	imgMap     = common.NewMapStringStruct()
 	latestHash = ""
 )
 
@@ -157,8 +157,8 @@ func resolveSource(paths []string) {
 	}
 }
 
-func generateImagesMap() (tools.MapStringFileInfo, error) {
-	var imgs = tools.NewMapStringStruct()
+func generateImagesMap() (common.MapStringFileInfo, error) {
+	var imgs = common.NewMapStringStruct()
 	for path, isDir := range srcs {
 		if isDir {
 			files, err := os.ReadDir(path)
@@ -190,11 +190,11 @@ func generateImagesMap() (tools.MapStringFileInfo, error) {
 	}
 	return imgs, nil
 }
-func getCurSources() []tools.Source {
+func getCurSources() []common.Source {
 	return srcs.ToSlice()
 }
 
-func calcHash(files []tools.FileInfo) string {
+func calcHash(files []common.FileInfo) string {
 	h := sha256.New()
 	for _, img := range files {
 		h.Write([]byte(img.BaseName + img.Hash))
@@ -219,11 +219,11 @@ func (ss *sourceService) RemoveSource(path string) error {
 	delete(srcs, path)
 	return nil
 }
-func (ss *sourceService) GetSources() []tools.Source {
+func (ss *sourceService) GetSources() []common.Source {
 	return getCurSources()
 }
 
-func (ss *sourceService) GetImages() ([]tools.FileInfo, error) {
+func (ss *sourceService) GetImages() ([]common.FileInfo, error) {
 	clear(imgMap)
 	mp, err := generateImagesMap()
 	if err != nil {

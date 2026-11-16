@@ -9,8 +9,9 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
-	"musicassist/config"
-	"musicassist/tools"
+	"musicassist/internal/common"
+	"musicassist/internal/config"
+	"musicassist/internal/tools"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,7 +47,7 @@ type SyncProgressBody struct {
 
 type uploadTask struct {
 	Url string
-	Img tools.FileInfo
+	Img common.FileInfo
 }
 
 type downloadTask struct {
@@ -75,10 +76,6 @@ func init() {
 
 func NewSyncService() *syncService {
 	return &syncService{}
-}
-
-func (s *syncService) SyncMsgTypes() []SyncMsgType {
-	return []SyncMsgType{SyncMsg, SyncMsgProgress, SyncMsgError}
 }
 
 func newSyncProgress(cnt int, total int) SyncProgressBody {
@@ -149,7 +146,7 @@ func syncRemote(url string, docSrcs []docSource) {
 	}
 }
 
-func updateImage(url string, img tools.FileInfo) error {
+func updateImage(url string, img common.FileInfo) error {
 	file, err := os.Open(img.Path)
 	if err != nil {
 		return err

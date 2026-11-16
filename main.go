@@ -2,7 +2,8 @@ package main
 
 import (
 	"embed"
-	"musicassist/services"
+	"musicassist/internal/config"
+	"musicassist/internal/services"
 
 	"log"
 
@@ -31,7 +32,7 @@ func main() {
 
 	notifier := notifications.New()
 	app := application.New(application.Options{
-		Name: staticConfig.ProductName(),
+		Name: config.GenConfig.ProductName(),
 		Services: []application.Service{
 			application.NewService(notifier),
 			application.NewService(services.NewSyncService()),
@@ -44,7 +45,7 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
-	app.RegisterService(application.NewService(services.NewAppService(app, notifier, staticConfig)))
+	app.RegisterService(application.NewService(services.NewAppService(app, notifier)))
 	app.RegisterService(application.NewService(services.NewSourceService(app)))
 	app.RegisterService(application.NewService(services.NewUpdateService(app)))
 

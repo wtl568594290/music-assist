@@ -41,7 +41,7 @@ import {
   CheckForUpdates,
   DownloadUpdate,
   RestartApp,
-} from '@bindings/musicassist/services/updateservice'
+} from '@bindings/musicassist/internal/services/updateservice'
 import { Events, Updater } from '@wailsio/runtime'
 enum UpdateStep {
   Check,

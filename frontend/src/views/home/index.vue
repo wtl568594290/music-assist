@@ -88,7 +88,7 @@ import {
   ChangeLatestIndex,
   GetConfigs,
   SetSortType,
-} from '@bindings/musicassist/services/appservice'
+} from '@bindings/musicassist/internal/services/appservice'
 import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
 import { procImgFilePaths, type Image } from './utils'
 import { onKeyStroke, useDebounceFn, useEventListener, useThrottleFn } from '@vueuse/core'
@@ -103,8 +103,8 @@ import {
   GetImages,
   GetSources,
   RemoveSource,
-} from '@bindings/musicassist/services/sourceservice'
-import type { Source } from '@bindings/musicassist/tools'
+} from '@bindings/musicassist/internal/services/sourceservice'
+import type { Source } from '@bindings/musicassist/internal/common'
 
 interface Actions {
   icon: IconPropType

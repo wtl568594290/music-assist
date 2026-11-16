@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
-	"musicassist/config"
-	"musicassist/tools"
+	"musicassist/internal/common"
+	"musicassist/internal/config"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -12,9 +12,8 @@ import (
 
 // App struct
 type appService struct {
-	app          *application.App
-	notifier     *notifications.NotificationService
-	staticConfig *tools.StaticConfig
+	app      *application.App
+	notifier *notifications.NotificationService
 }
 
 const (
@@ -25,11 +24,11 @@ var requestNotificationCnt int = 0
 var globalApp *appService
 var mainWin *application.WebviewWindow
 
-func NewAppService(a *application.App, notifier *notifications.NotificationService, staticConfig *tools.StaticConfig) *appService {
+func NewAppService(a *application.App, notifier *notifications.NotificationService) *appService {
 	if globalApp != nil {
 		return globalApp
 	}
-	globalApp = &appService{app: a, notifier: notifier, staticConfig: staticConfig}
+	globalApp = &appService{app: a, notifier: notifier}
 	return globalApp
 }
 
@@ -119,17 +118,17 @@ func (as *appService) GetConfigs() config.Conf {
 }
 
 func (as *appService) SetSortType(sort string) {
-	st, err := tools.ParseSortType(sort)
+	st, err := common.ParseSortType(sort)
 	if err != nil {
-		st = tools.SortByName
+		st = common.SortByName
 	}
 	config.SetSortType(st)
 }
 
 func (as *appService) GetSortTypeList() []string {
-	return tools.GetSortTypeList()
+	return common.GetSortTypeList()
 }
 
-func (as *appService) GetStaticConfig() *tools.StaticConfig {
-	return as.staticConfig
+func (as *appService) GetGenerateConfig() *common.GenerateConfig {
+	return config.GenConfig
 }

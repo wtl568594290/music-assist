@@ -111,8 +111,12 @@
 <script setup lang="ts">
 import { useSortType } from './useSortType'
 import SyncView from './SyncView.vue'
-import { GenerateDoc, OpenDoc, RemoveFile } from '@bindings/musicassist/services/documentservice'
-import type { SortType } from '@bindings/musicassist/tools'
+import {
+  GenerateDoc,
+  OpenDoc,
+  RemoveFile,
+} from '@bindings/musicassist/internal/services/documentservice'
+import type { SortType } from '@bindings/musicassist/internal/common'
 
 const syncViewRef = ref<InstanceType<typeof SyncView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()

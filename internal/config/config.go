@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"musicassist/tools"
+	"musicassist/internal/common"
 	"os"
 	"path/filepath"
 
@@ -16,7 +16,7 @@ type Conf struct {
 	PosY        int
 	Sources     []string
 	LatestIndex float64
-	SortType    tools.SortType
+	SortType    common.SortType
 	RemoteUrl   string
 }
 
@@ -33,7 +33,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	appDir := filepath.Join(userDir, tools.ProjectName)
+	appDir := filepath.Join(userDir, ProjectName)
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
 		os.Mkdir(appDir, 0755)
 	}
@@ -53,7 +53,7 @@ func init() {
 		PosX:        -1,
 		PosY:        -1,
 		LatestIndex: -1,
-		SortType:    tools.SortByName,
+		SortType:    common.SortByName,
 		RemoteUrl:   "https://render-test-zar6.onrender.com",
 	}
 	err = iniFile.MapTo(config)
@@ -107,11 +107,11 @@ func SetLatestIndex(index float64) {
 	config.LatestIndex = index
 }
 
-func GetSortType() tools.SortType {
+func GetSortType() common.SortType {
 	return config.SortType
 }
 
-func SetSortType(sortType tools.SortType) {
+func SetSortType(sortType common.SortType) {
 	config.SortType = sortType
 }
 

@@ -15,6 +15,11 @@ includes:
   windows: ./build/windows/Taskfile.yml
 
 tasks:
+  generate:config:
+    summary: Generates the configuration file
+    cmds:
+      - go generate ./internal/config
+
   update:build-assets:
     summary: Updates the build assets
     cmds:
@@ -24,6 +29,7 @@ tasks:
     summary: Builds the application
     deps:
       - task: update:build-assets
+      - task: generate:config
     cmds:
       - task: "{{.GOOS}}:build"
 

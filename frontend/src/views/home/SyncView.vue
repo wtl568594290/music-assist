@@ -15,11 +15,12 @@
 </template>
 <script setup lang="ts">
 import { Download } from '@element-plus/icons-vue'
-import { GetConfigs } from '@bindings/musicassist/services/appservice'
+import { GetConfigs } from '@bindings/musicassist/internal/services/appservice'
 import { Events } from '@wailsio/runtime'
 import { useThrottleFn } from '@vueuse/core'
-import { SyncMsgType, type SyncProgressBody } from '@bindings/musicassist/services'
-import { DownloadRemote } from '@bindings/musicassist/services/syncservice'
+import { type SyncProgressBody } from '@bindings/musicassist/internal/services'
+import { DownloadRemote } from '@bindings/musicassist/internal/services/syncservice'
+import { SyncMsg, SyncMsgError, SyncMsgProgress } from '@bindings/events'
 
 const props = defineProps<{
   id: string
@@ -80,13 +81,13 @@ const handleDownload = () => {
 }
 
 onMounted(async () => {
-  Events.On(SyncMsgType.SyncMsg, (ev) => {
+  Events.On(SyncMsg, (ev) => {
     syncMsg(ev.data)
   })
-  Events.On(SyncMsgType.SyncMsgError, (ev) => {
+  Events.On(SyncMsgError, (ev) => {
     syncMsgError(ev.data)
   })
-  Events.On(SyncMsgType.SyncMsgProgress, (ev) => {
+  Events.On(SyncMsgProgress, (ev) => {
     syncMsgProgress(ev.data)
   })
   const cfg = await GetConfigs()
@@ -94,9 +95,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  Events.Off(SyncMsgType.SyncMsg)
-  Events.Off(SyncMsgType.SyncMsgError)
-  Events.Off(SyncMsgType.SyncMsgProgress)
+  Events.Off(SyncMsg)
+  Events.Off(SyncMsgError)
+  Events.Off(SyncMsgProgress)
 })
 </script>
 <style scoped></style>

@@ -1,4 +1,4 @@
-import { GetSortTypeList } from '@bindings/musicassist/services/appservice'
+import { GetSortTypeList } from '@bindings/musicassist/internal/services/appservice'
 
 export function useSortType() {
   const sortTypeList = ref<string[]>([])

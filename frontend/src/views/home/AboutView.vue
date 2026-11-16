@@ -3,14 +3,14 @@
     <div class="flex flex-col items-center gap-5 py-6 px-4 select-none">
       <!-- Header -->
       <div class="flex flex-col items-center gap-1">
-        <div class="text-3xl font-bold">{{ staticConfig?.BuildConfig.Info.ProductName }}</div>
+        <div class="text-3xl font-bold">{{ generateConfig?.BuildConfig.Info.ProductName }}</div>
         <div class="text-sm text-gray-500">Numbered Musical Notation Assistant</div>
         <div
           class="cursor-pointer hover:text-green-600 text-sm mt-1"
           title="Check for updates"
           @click="emit('VersionClick')"
         >
-          Version : v{{ staticConfig?.BuildConfig.Info.Version }}
+          Version : v{{ generateConfig?.BuildConfig.Info.Version }}
         </div>
       </div>
 
@@ -75,14 +75,13 @@
             MIT License
           </span>
         </div>
-        <div>{{ staticConfig?.BuildConfig.Info.Copyright }}</div>
+        <div>{{ generateConfig?.BuildConfig.Info.Copyright }}</div>
       </div>
     </div>
   </el-scrollbar>
 </template>
 <script setup lang="ts">
-import { GetStaticConfig } from '@bindings/musicassist/services/appservice'
-import type { StaticConfig } from '@bindings/musicassist/tools'
+import { GetGenerateConfig } from '@bindings/musicassist/internal/services/appservice'
 import { Browser } from '@wailsio/runtime'
 import {
   Link,
@@ -92,14 +91,14 @@ import {
   Document,
   Download,
   Refresh,
-  Monitor,
 } from '@element-plus/icons-vue'
+import type { GenerateConfig } from '@bindings/musicassist/internal/common'
 
 const emit = defineEmits<{
   (e: 'VersionClick'): void
 }>()
 
-const staticConfig = ref<StaticConfig | null>(null)
+const generateConfig = ref<GenerateConfig | null>(null)
 
 const features = [
   { icon: Picture, text: 'Image Viewer' },
@@ -131,7 +130,7 @@ const openUrl = (url: string) => {
 }
 
 onMounted(async () => {
-  staticConfig.value = await GetStaticConfig()
+  generateConfig.value = await GetGenerateConfig()
 })
 </script>
 <style scoped></style>
