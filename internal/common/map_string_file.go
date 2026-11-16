@@ -104,32 +104,58 @@ func getCreateTime(info os.FileInfo) time.Time {
 }
 
 func sortFiles(files []FileInfo, sortType SortType) []FileInfo {
+	// 用 Path 作为兜底次级排序键，确保排序结果完全确定
+	// （因为 Go map 遍历顺序不确定，非稳定排序+重复键会导致同一组文件排序结果不一致）
+	pathLess := func(i, j int) bool {
+		return files[i].Path < files[j].Path
+	}
+
 	switch sortType {
 	case SortByCreated:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].Created < files[j].Created
+		sort.SliceStable(files, func(i, j int) bool {
+			if files[i].Created != files[j].Created {
+				return files[i].Created < files[j].Created
+			}
+			return pathLess(i, j)
 		})
 	case SortByCreatedDesc:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].Created > files[j].Created
+		sort.SliceStable(files, func(i, j int) bool {
+			if files[i].Created != files[j].Created {
+				return files[i].Created > files[j].Created
+			}
+			return pathLess(i, j)
 		})
 	case SortByModTime:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime < files[j].ModTime
+		sort.SliceStable(files, func(i, j int) bool {
+			if files[i].ModTime != files[j].ModTime {
+				return files[i].ModTime < files[j].ModTime
+			}
+			return pathLess(i, j)
 		})
 	case SortByModTimeDesc:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime > files[j].ModTime
+		sort.SliceStable(files, func(i, j int) bool {
+			if files[i].ModTime != files[j].ModTime {
+				return files[i].ModTime > files[j].ModTime
+			}
+			return pathLess(i, j)
 		})
 	case SortByNameDesc:
 		collator := collate.New(language.SimplifiedChinese, collate.Numeric, collate.IgnoreCase)
-		sort.Slice(files, func(i, j int) bool {
-			return collator.CompareString(files[i].BaseName, files[j].BaseName) > 0
+		sort.SliceStable(files, func(i, j int) bool {
+			cmp := collator.CompareString(files[i].BaseName, files[j].BaseName)
+			if cmp != 0 {
+				return cmp > 0
+			}
+			return pathLess(i, j)
 		})
 	default:
 		collator := collate.New(language.SimplifiedChinese, collate.Numeric, collate.IgnoreCase)
-		sort.Slice(files, func(i, j int) bool {
-			return collator.CompareString(files[i].BaseName, files[j].BaseName) < 0
+		sort.SliceStable(files, func(i, j int) bool {
+			cmp := collator.CompareString(files[i].BaseName, files[j].BaseName)
+			if cmp != 0 {
+				return cmp < 0
+			}
+			return pathLess(i, j)
 		})
 	}
 	return files
