@@ -102,7 +102,7 @@
       <el-button v-show="latestDocsPath.length" type="danger" @click="handleRevoke"
         >Revoke</el-button
       >
-      <el-button :loading="isGenerating" type="primary" @click="handleGenerate"
+      <el-button :disabled="disabled" :loading="isGenerating" type="primary" @click="handleGenerate"
         >Generate Music Doc</el-button
       >
     </div>
@@ -117,6 +117,10 @@ import {
   RemoveFile,
 } from '@bindings/musicassist/internal/services/documentservice'
 import type { SortType } from '@bindings/musicassist/internal/common'
+
+const props = defineProps<{
+  disabled: boolean
+}>()
 
 const syncViewRef = ref<InstanceType<typeof SyncView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
@@ -133,7 +137,7 @@ const pageNumberFontSize = ref(16)
 const catalogFontSize = ref(12)
 const isGenerating = ref(false)
 const latestDocsPath: Ref<string[]> = ref([])
-const splitByDir = ref(false)
+const splitByDir = ref(true)
 
 const handleRevoke = () => {
   if (latestDocsPath.value.length) {

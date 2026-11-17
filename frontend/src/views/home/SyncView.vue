@@ -2,7 +2,34 @@
   <div class="flex flex-col gap-2">
     <div class="flex flex-row items-center gap-2 w-75">
       <el-checkbox v-model="sync" :id="id" />
-      <el-input v-show="sync" v-model="remoteUrl" placeholder="Remote URL" />
+      <el-select
+        v-show="sync"
+        v-model="remoteUrl"
+        placeholder="Select Remote URL"
+        fit-input-width
+        allow-create
+        filterable
+        popper-class="remote-url-popper"
+      >
+        <el-option
+          v-for="(item, key) in remoteUrlList"
+          :key="key"
+          :label="item.url"
+          :value="item.url"
+        >
+          <div class="flex flex-row items-center justify-between gap-2">
+            <el-text truncated>{{ item.url }}</el-text>
+            <el-button
+              :icon="Delete"
+              size="small"
+              text
+              class="shrink-0"
+              @click.stop="handleDeleteOption(item)"
+              @mousedown.stop
+            />
+          </div>
+        </el-option>
+      </el-select>
       <el-button v-show="sync" @click="handleDownload" :icon="Download" />
     </div>
     <el-progress
@@ -14,22 +41,31 @@
   </div>
 </template>
 <script setup lang="ts">
-import { Download } from '@element-plus/icons-vue'
-import { GetConfigs } from '@bindings/musicassist/internal/services/appservice'
+import { Delete, Download } from '@element-plus/icons-vue'
 import { Events } from '@wailsio/runtime'
 import { useThrottleFn } from '@vueuse/core'
 import { type SyncProgressBody } from '@bindings/musicassist/internal/services'
 import { DownloadRemote } from '@bindings/musicassist/internal/services/syncservice'
 import { SyncMsg, SyncMsgError, SyncMsgProgress } from '@bindings/events'
 
+interface StoreRemoteUrl {
+  time: number
+  url: string
+}
+
 const props = defineProps<{
   id: string
 }>()
+
 defineExpose({
   getRemoteUrl,
 })
 
+const REMOTE_URL_LIST_MAX = 10
+const REMOTE_URL_LIST_KEY = 'remote_url_list'
+
 const sync = ref(true)
+const remoteUrlList = ref<StoreRemoteUrl[]>([])
 const remoteUrl = ref('')
 const syncUploadBody = ref({
   Total: 0,
@@ -45,6 +81,48 @@ const syncProgressValue = computed(() => {
 
 function getRemoteUrl() {
   return sync.value ? remoteUrl.value : ''
+}
+
+function getStoreRemoteUrlList(): StoreRemoteUrl[] {
+  let res: StoreRemoteUrl[] = []
+  const storage = localStorage.getItem(REMOTE_URL_LIST_KEY)
+  if (storage) {
+    try {
+      const parsed = JSON.parse(storage)
+      if (Array.isArray(parsed)) {
+        res = parsed as StoreRemoteUrl[]
+        res = res.filter((item) => item.url !== '')
+      }
+    } catch {}
+  }
+  return res
+}
+
+function addStoreRemoteUrlList(url: string) {
+  if (!url) {
+    return
+  }
+  const list = getStoreRemoteUrlList()
+  if (!list.find((item) => item.url === url)) {
+    list.push({ time: Date.now(), url })
+    list.sort((a, b) => b.time - a.time)
+    if (list.length > REMOTE_URL_LIST_MAX) {
+      list.splice(REMOTE_URL_LIST_MAX)
+    }
+    localStorage.setItem(REMOTE_URL_LIST_KEY, JSON.stringify(list))
+    remoteUrlList.value = list
+  }
+}
+
+const handleDeleteOption = (item: StoreRemoteUrl) => {
+  if (!item || !item.url) {
+    return
+  }
+  const list = getStoreRemoteUrlList().filter((i) => i.url !== item.url)
+  list.sort((a, b) => b.time - a.time)
+  localStorage.setItem(REMOTE_URL_LIST_KEY, JSON.stringify(list))
+  remoteUrlList.value = list
+  remoteUrl.value = ''
 }
 
 const throttledMsgUpload = useThrottleFn(
@@ -75,9 +153,16 @@ const syncMsgError = (msg: string) => {
 }
 
 const handleDownload = () => {
-  DownloadRemote(remoteUrl.value).catch((err) => {
-    ElMessage.error(err)
-  })
+  if (!remoteUrl.value) {
+    return
+  }
+  DownloadRemote(remoteUrl.value)
+    .then(() => {
+      addStoreRemoteUrlList(remoteUrl.value)
+    })
+    .catch((err) => {
+      ElMessage.error(err)
+    })
 }
 
 onMounted(async () => {
@@ -90,8 +175,10 @@ onMounted(async () => {
   Events.On(SyncMsgProgress, (ev) => {
     syncMsgProgress(ev.data)
   })
-  const cfg = await GetConfigs()
-  remoteUrl.value = cfg.RemoteUrl
+  remoteUrlList.value = getStoreRemoteUrlList()
+  if (remoteUrlList.value.length) {
+    remoteUrl.value = remoteUrlList.value[0].url
+  }
 })
 
 onUnmounted(() => {
@@ -101,3 +188,9 @@ onUnmounted(() => {
 })
 </script>
 <style scoped></style>
+<style>
+/* popper 由 ElSelect 内部组件渲染并 teleport 到 body，不携带本组件的 scoped 属性 */
+.remote-url-popper .el-select-dropdown__item {
+  padding-right: 0px;
+}
+</style>

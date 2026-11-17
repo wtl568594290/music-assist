@@ -17,7 +17,6 @@ type Conf struct {
 	Sources     []string
 	LatestIndex float64
 	SortType    common.SortType
-	RemoteUrl   string
 }
 
 const (
@@ -54,7 +53,6 @@ func init() {
 		PosY:        -1,
 		LatestIndex: -1,
 		SortType:    common.SortByName,
-		RemoteUrl:   "https://render-test-zar6.onrender.com",
 	}
 	err = iniFile.MapTo(config)
 	if err != nil {
@@ -115,19 +113,10 @@ func SetSortType(sortType common.SortType) {
 	config.SortType = sortType
 }
 
-func GetRemoteUrl() string {
-	return config.RemoteUrl
-}
-
-func SetRemoteUrl(remoteUrl string) {
-	config.RemoteUrl = remoteUrl
-}
-
 func ViewableConfig() Conf {
 	viewAbleConfig := Conf{
 		LatestIndex: config.LatestIndex,
 		SortType:    config.SortType,
-		RemoteUrl:   config.RemoteUrl,
 	}
 	return viewAbleConfig
 }

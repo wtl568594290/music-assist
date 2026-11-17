@@ -58,9 +58,9 @@
             </el-scrollbar>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="Document" name="document" :disabled="imgs.length === 0" class="h-full">
+        <el-tab-pane label="Document" name="document" class="h-full">
           <el-scrollbar class="flex-1 min-h-0">
-            <MusicDocument />
+            <MusicDocument :disabled="imgs.length === 0" />
           </el-scrollbar>
         </el-tab-pane>
         <el-tab-pane label="About" name="about" class="h-full">

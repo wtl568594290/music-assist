@@ -10,12 +10,12 @@ import (
 	"log"
 	"mime/multipart"
 	"musicassist/internal/common"
-	"musicassist/internal/config"
 	"musicassist/internal/tools"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -91,7 +91,6 @@ func syncRemote(url string, docSrcs []docSource) {
 		return
 	}
 	if k, err := json.Marshal(docSrcs); err == nil {
-		config.SetRemoteUrl(url)
 		go func() {
 			resp, err := tools.HttpClient.Post(url+"/doc", "application/json", bytes.NewReader(k))
 			if err != nil || resp.StatusCode != http.StatusOK {
@@ -243,10 +242,11 @@ func downloadFile(url, dir, filename string) error {
 }
 
 func (syncs *syncService) DownloadRemote(urlStr string) error {
+	// remove / at the end of urlStr
+	urlStr = strings.TrimSuffix(urlStr, "/")
 	if urlStr == "" {
 		return errors.New("Remote url is empty")
 	}
-	config.SetRemoteUrl(urlStr)
 	go func() {
 		resp, err := tools.HttpClient.Get(urlStr + "/doc")
 		if err != nil || resp.StatusCode != http.StatusOK {
