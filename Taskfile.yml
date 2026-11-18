@@ -40,6 +40,29 @@ tasks:
     cmds:
       - task: "{{.GOOS}}:package"
 
+  release:
+    summary: Builds the application and generates the update release directory
+    desc: |
+      Generates the update assets consumed by the Cloudflare R2 provider:
+        bin/release/<APP_NAME>/info.json
+        bin/release/<APP_NAME>/releases/<vVersion>/<APP_NAME>.exe
+      reference: https://gitee.com/wtl1989/cloudflare-r2-release
+      Use the existing build; run `release:build` to rebuild first.
+    vars:
+      VERSION: '{{.VERSION | default .version | default ""}}'
+      NOTES: '{{.NOTES | default .notes | default ""}}'
+    env:
+      RELEASE_NOTES: "{{.NOTES}}"
+    cmds:
+      - ./build/cloudflare-r2-release.exe -upload
+
+  release:build:
+    summary: Builds the application and generates the update release directory
+    deps:
+      - task: build
+    cmds:
+      - task: release
+
   run:
     summary: Runs the application
     cmds:

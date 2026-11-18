@@ -114,13 +114,15 @@ const techStack = [
   { label: 'Backend', value: 'Go 1.26, Wails v3' },
   { label: 'Frontend', value: 'Vue 3, TypeScript, Vite, Element Plus, Tailwind CSS' },
   { label: 'Build', value: 'Task, wails3 CLI, NSIS / MSIX' },
-  { label: 'Updater', value: 'Gitee Releases provider' },
+  { label: 'Updater', value: 'Cloudflare R2 / Gitee / GitHub Releases' },
 ]
 
 const repos = [
   { label: 'GitHub', url: 'https://github.com/wtl568594290/music-assist' },
   { label: 'Gitee', url: 'https://gitee.com/wtl1989/music-assist' },
+  { label: 'R2 Release', url: 'https://gitee.com/wtl1989/cloudflare-r2-release' },
   { label: 'Sync Server', url: 'https://github.com/wtl568594290/render-test' },
+  { label: 'Sync Worker', url: 'https://github.com/wtl568594290/music-assist-server' },
 ]
 
 const licenseUrl = 'https://opensource.org/licenses/MIT'

@@ -35,6 +35,12 @@ func init() {
 }
 
 func NewUpdateService(app *application.App) *updateService {
+	cloudflareR2Provider := &updater.CloudflareR2Provider{
+		Repo:       config.ProjectName,
+		HTTPClient: tools.HttpClient,
+		BaseUrl:    config.GenConfig.Env.R2PublicBaseUrl,
+	}
+	providers := []wailsupdater.Provider{cloudflareR2Provider}
 	giteeProvider := &updater.GiteeProvider{
 		Repo:       config.ProjectName,
 		Owner:      "wtl1989",
@@ -50,7 +56,7 @@ func NewUpdateService(app *application.App) *updateService {
 		},
 		AccessToken: config.GenConfig.Env.GiteeAccessToken,
 	}
-	providers := []wailsupdater.Provider{giteeProvider}
+	providers = append(providers, giteeProvider)
 	githubProvier, err := github.New(github.Config{
 		Repository: "wtl568594290/" + config.ProjectName,
 		Token:      config.GenConfig.Env.GithubAccessToken,

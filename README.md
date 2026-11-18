@@ -28,11 +28,16 @@ Built with **Go + Wails v3** on the backend and **Vue 3 + TypeScript + Element P
 - **Remote Sync**
   - Pull notation packs from a remote HTTP server
   - Real-time sync progress via Wails events
-  - Remote server repository: [render-test](https://github.com/wtl568594290/render-test)
+  - Remote server repositories:
+    - [render-test](https://github.com/wtl568594290/render-test)
+    - [music-assist-server](https://github.com/wtl568594290/music-assist-server) (Cloudflare Worker)
 
 - **Auto Update**
   - Check / download / verify / install / restart in one flow
-  - Custom Gitee Releases provider with progress and speed display
+  - Multiple update providers with progress and speed display:
+    - Cloudflare R2 provider, release repository: [cloudflare-r2-release](https://gitee.com/wtl1989/cloudflare-r2-release)
+    - Gitee Releases provider
+    - GitHub Releases provider
   - Manual check from the About tab, automatic check every 2 hours
 
 ## Tech Stack
@@ -43,7 +48,7 @@ Built with **Go + Wails v3** on the backend and **Vue 3 + TypeScript + Element P
 | Backend  | Go 1.26, Wails v3, wordZero (Docx), imaging, yaml, ini                |
 | Frontend | Vue 3, TypeScript, Vite 7, Element Plus, Tailwind CSS 4, VueUse       |
 | Build    | Task (Taskfile), wails3 CLI, NSIS / MSIX packaging                    |
-| Updater  | Custom Gitee Releases provider (wails updater)                        |
+| Updater  | Cloudflare R2 / Gitee / GitHub Releases providers (wails updater)      |
 
 ## Project Layout
 
@@ -57,7 +62,7 @@ music-assist/
 │   ├── documentService.go # Docx generation
 │   ├── syncService.go   # Remote sync
 │   └── updateService.go # Auto update
-├── updater/             # Custom Gitee update provider
+├── updater/             # Cloudflare R2 & Gitee update providers
 ├── tools/               # Helpers (sort, notifier, static config, ...)
 ├── config/              # Runtime config persistence
 ├── build/               # Windows build / packaging assets (NSIS, MSIX)
@@ -97,9 +102,10 @@ Outputs are placed under `bin/`.
 
 The companion remote sync server lives in a separate repository:
 
-**[https://github.com/wtl568594290/render-test](https://github.com/wtl568594290/render-test)**
+- **[https://github.com/wtl568594290/render-test](https://github.com/wtl568594290/render-test)**
+- **[https://github.com/wtl568594290/music-assist-server](https://github.com/wtl568594290/music-assist-server)** (Cloudflare Worker)
 
-Use it together with the **Remote URL** field inside the app to download shared notation packs.
+Use one of them together with the **Remote URL** field inside the app to download shared notation packs.
 
 ## License
 
