@@ -36,6 +36,7 @@
   </el-dialog>
 </template>
 <script setup lang="ts">
+import { storage, StorageKey } from '@/utils/storage'
 import { Stage, type Release } from '@bindings/github.com/wailsapp/wails/v3/pkg/updater'
 import {
   CheckForUpdates,
@@ -126,11 +127,10 @@ const handleDo = async () => {
 }
 
 function autoCheckUpdate() {
-  const raw = localStorage.getItem('lastCheckTime')
-  const lastCheckTime = raw === null ? 0 : Number(raw)
+  const lastCheckTime = storage.get(StorageKey.LastAutoCheckUpdateTime) || 0
   const now = Date.now()
   if (now - lastCheckTime > AUTO_CHECK_UPDATE_INTERVAL) {
-    localStorage.setItem('lastCheckTime', now.toString())
+    storage.set(StorageKey.LastAutoCheckUpdateTime, now)
     CheckForUpdates()
   }
 }

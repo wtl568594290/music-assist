@@ -47,11 +47,9 @@ import { useThrottleFn } from '@vueuse/core'
 import { type SyncProgressBody } from '@bindings/musicassist/internal/services'
 import { DownloadRemote } from '@bindings/musicassist/internal/services/syncservice'
 import { SyncMsg, SyncMsgError, SyncMsgProgress } from '@bindings/events'
+import { storage, StorageKey, type StorageSchema } from '@/utils/storage'
 
-interface StoreRemoteUrl {
-  time: number
-  url: string
-}
+type StorageRemoteUrl = StorageSchema[StorageKey.SyncRemoteUrlList][0]
 
 const props = defineProps<{
   id: string
@@ -62,10 +60,9 @@ defineExpose({
 })
 
 const REMOTE_URL_LIST_MAX = 10
-const REMOTE_URL_LIST_KEY = 'remote_url_list'
 
 const sync = ref(true)
-const remoteUrlList = ref<StoreRemoteUrl[]>([])
+const remoteUrlList = ref<StorageRemoteUrl[]>([])
 const remoteUrl = ref('')
 const syncUploadBody = ref({
   Total: 0,
@@ -83,19 +80,8 @@ function getRemoteUrl() {
   return sync.value ? remoteUrl.value : ''
 }
 
-function getStoreRemoteUrlList(): StoreRemoteUrl[] {
-  let res: StoreRemoteUrl[] = []
-  const storage = localStorage.getItem(REMOTE_URL_LIST_KEY)
-  if (storage) {
-    try {
-      const parsed = JSON.parse(storage)
-      if (Array.isArray(parsed)) {
-        res = parsed as StoreRemoteUrl[]
-        res = res.filter((item) => item.url !== '')
-      }
-    } catch {}
-  }
-  return res
+function getStoreRemoteUrlList(): StorageRemoteUrl[] {
+  return storage.get(StorageKey.SyncRemoteUrlList) || []
 }
 
 function addStoreRemoteUrlList(url: string) {
@@ -109,18 +95,18 @@ function addStoreRemoteUrlList(url: string) {
     if (list.length > REMOTE_URL_LIST_MAX) {
       list.splice(REMOTE_URL_LIST_MAX)
     }
-    localStorage.setItem(REMOTE_URL_LIST_KEY, JSON.stringify(list))
+    storage.set(StorageKey.SyncRemoteUrlList, list)
     remoteUrlList.value = list
   }
 }
 
-const handleDeleteOption = (item: StoreRemoteUrl) => {
+const handleDeleteOption = (item: StorageRemoteUrl) => {
   if (!item || !item.url) {
     return
   }
   const list = getStoreRemoteUrlList().filter((i) => i.url !== item.url)
   list.sort((a, b) => b.time - a.time)
-  localStorage.setItem(REMOTE_URL_LIST_KEY, JSON.stringify(list))
+  storage.set(StorageKey.SyncRemoteUrlList, list)
   remoteUrlList.value = list
   remoteUrl.value = ''
 }

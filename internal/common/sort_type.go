@@ -22,10 +22,10 @@ var validSortTypes = map[string]SortType{
 	"CreatedDesc": SortByCreatedDesc,
 }
 
-func GetSortTypeList() []string {
-	keys := make([]string, 0, len(validSortTypes))
-	for k := range validSortTypes {
-		keys = append(keys, k)
+func GetSortTypeList() []SortType {
+	keys := make([]SortType, 0, len(validSortTypes))
+	for _, st := range validSortTypes {
+		keys = append(keys, st)
 	}
 	return keys
 }

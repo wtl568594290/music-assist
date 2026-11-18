@@ -109,23 +109,15 @@ func (as *appService) ServiceStartup(ctx context.Context, options application.Se
 	return nil
 }
 
-func (as *appService) ChangeLatestIndex(index float64) {
-	config.SetLatestIndex(index)
+func (as *appService) GetImgSortType() common.SortType {
+	return config.GetSortType()
 }
 
-func (as *appService) GetConfigs() config.Conf {
-	return config.ViewableConfig()
-}
-
-func (as *appService) SetSortType(sort string) {
-	st, err := common.ParseSortType(sort)
-	if err != nil {
-		st = common.SortByName
-	}
+func (as *appService) SetImgSortType(st common.SortType) {
 	config.SetSortType(st)
 }
 
-func (as *appService) GetSortTypeList() []string {
+func (as *appService) GetSortTypeList() []common.SortType {
 	return common.GetSortTypeList()
 }
 

@@ -84,11 +84,7 @@ import MusicDocument from './MusicDocument.vue'
 import UpdateView from './UpdateView.vue'
 import AboutView from './AboutView.vue'
 
-import {
-  ChangeLatestIndex,
-  GetConfigs,
-  SetSortType,
-} from '@bindings/musicassist/internal/services/appservice'
+import { GetImgSortType, SetImgSortType } from '@bindings/musicassist/internal/services/appservice'
 import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
 import { procImgFilePaths, type Image } from './utils'
 import { onKeyStroke, useDebounceFn, useEventListener, useThrottleFn } from '@vueuse/core'
@@ -105,6 +101,7 @@ import {
   RemoveSource,
 } from '@bindings/musicassist/internal/services/sourceservice'
 import type { Source } from '@bindings/musicassist/internal/common'
+import { storage, StorageKey } from '@/utils/storage'
 
 interface Actions {
   icon: IconPropType
@@ -126,6 +123,8 @@ const dialogVisible = ref(false)
 const activeName = ref('sources')
 const titleTips = ref('')
 const showTitleTips = ref(false)
+
+let mountedComplete = false
 
 const actions: Actions[] = [
   {
@@ -251,7 +250,7 @@ async function showDialog() {
 
 const handleChangeSortType = async () => {
   if (selectedSortType.value) {
-    await SetSortType(selectedSortType.value)
+    await SetImgSortType(selectedSortType.value)
     await updateImages()
   }
 }
@@ -280,7 +279,9 @@ watch(curIndex, async (newVal, _) => {
   }
 
   // Events.Emit('index-change', newVal)
-  ChangeLatestIndex(newVal)
+  if (mountedComplete) {
+    storage.set(StorageKey.LatestImageIndex, newVal)
+  }
 })
 
 const stopKeyLeft = onKeyStroke('ArrowLeft', useThrottleFn(prevImg, THROTTLE_TIME))
@@ -306,12 +307,13 @@ useEventListener('focus', async () => {
 })
 
 onMounted(async () => {
+  mountedComplete = false
+  const latestIndex = storage.get(StorageKey.LatestImageIndex) ?? -1
   await handleChangeSources(async () => {})
-  const cfg = await GetConfigs()
-  await sortTypeInit(cfg.SortType)
+  const sortType = await GetImgSortType()
+  await sortTypeInit(sortType)
   if (imgs.value.length > 0) {
-    const latestIndex = cfg.LatestIndex
-    if (latestIndex !== -1 && curIndex.value != latestIndex) {
+    if (latestIndex !== -1 && curIndex.value !== latestIndex) {
       await nextTick()
       curIndex.value = latestIndex
     }
@@ -319,6 +321,7 @@ onMounted(async () => {
     activeName.value = 'sources'
     showDialog()
   }
+  mountedComplete = true
 })
 
 onUnmounted(() => {

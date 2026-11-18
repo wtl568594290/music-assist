@@ -87,7 +87,12 @@
         />
       </el-form-item>
       <el-form-item label="Sort By">
-        <el-select v-model="selectedSortType" placeholder="Sort Type" class="flex-1">
+        <el-select
+          v-model="selectedSortType"
+          placeholder="Sort Type"
+          class="flex-1"
+          @change="handleSortTypeChange"
+        >
           <el-option v-for="item in sortTypeList" :key="item" :label="item" :value="item" />
         </el-select>
       </el-form-item>
@@ -116,7 +121,8 @@ import {
   OpenDoc,
   RemoveFile,
 } from '@bindings/musicassist/internal/services/documentservice'
-import type { SortType } from '@bindings/musicassist/internal/common'
+import { SortType } from '@bindings/musicassist/internal/common'
+import { storage, StorageKey } from '@/utils/storage'
 
 const props = defineProps<{
   disabled: boolean
@@ -138,6 +144,10 @@ const catalogFontSize = ref(12)
 const isGenerating = ref(false)
 const latestDocsPath: Ref<string[]> = ref([])
 const splitByDir = ref(true)
+
+const handleSortTypeChange = () => {
+  storage.set(StorageKey.DocSortType, selectedSortType.value)
+}
 
 const handleRevoke = () => {
   if (latestDocsPath.value.length) {
@@ -209,7 +219,8 @@ const handleGenerate = () => {
 }
 
 onMounted(async () => {
-  await sortTypeInit('')
+  const sortType = storage.get(StorageKey.DocSortType)
+  await sortTypeInit(sortType || SortType.SortByName)
 })
 </script>
 <style scoped></style>

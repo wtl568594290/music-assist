@@ -10,13 +10,12 @@ import (
 )
 
 type Conf struct {
-	Height      int
-	Width       int
-	PosX        int
-	PosY        int
-	Sources     []string
-	LatestIndex float64
-	SortType    common.SortType
+	Height   int
+	Width    int
+	PosX     int
+	PosY     int
+	Sources  []string
+	SortType common.SortType
 }
 
 const (
@@ -47,12 +46,11 @@ func init() {
 		panic(err)
 	}
 	config = &Conf{
-		Height:      768,
-		Width:       1024,
-		PosX:        -1,
-		PosY:        -1,
-		LatestIndex: -1,
-		SortType:    common.SortByName,
+		Height:   768,
+		Width:    1024,
+		PosX:     -1,
+		PosY:     -1,
+		SortType: common.SortByName,
 	}
 	err = iniFile.MapTo(config)
 	if err != nil {
@@ -97,26 +95,10 @@ func SetSources(sources []string) {
 	config.Sources = sources
 }
 
-func GetLatestIndex() float64 {
-	return config.LatestIndex
-}
-
-func SetLatestIndex(index float64) {
-	config.LatestIndex = index
-}
-
 func GetSortType() common.SortType {
 	return config.SortType
 }
 
 func SetSortType(sortType common.SortType) {
 	config.SortType = sortType
-}
-
-func ViewableConfig() Conf {
-	viewAbleConfig := Conf{
-		LatestIndex: config.LatestIndex,
-		SortType:    config.SortType,
-	}
-	return viewAbleConfig
 }
