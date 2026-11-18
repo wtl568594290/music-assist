@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -18,8 +19,10 @@ import (
 )
 
 type updateService struct {
-	app        *application.App
-	curVersion string
+	app         *application.App
+	curVersion  string
+	checking    atomic.Bool
+	downloading atomic.Bool
 }
 
 // Shutdown or restart to apply update
@@ -132,28 +135,38 @@ func (u *updateService) ServiceShutdown() error {
 	return nil
 }
 
-func (u *updateService) CheckForUpdates() {
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		if _, err := u.app.Updater.Check(ctx); err != nil {
-			log.Println(err)
-		}
-	}()
+func (u *updateService) CheckForUpdates() (*wailsupdater.Release, error) {
+	if !u.checking.CompareAndSwap(false, true) {
+		return nil, errors.New("update check already in progress")
+	}
+	defer u.checking.Store(false)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	release, err := u.app.Updater.Check(ctx)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return release, nil
 }
 
 func (u *updateService) DownloadUpdate() error {
+	if !u.downloading.CompareAndSwap(false, true) {
+		return errors.New("update download already in progress")
+	}
+	defer u.downloading.Store(false)
+
 	if u.app.Updater.State() != wailsupdater.StateAvailable {
 		return errors.New("no available update")
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		if err := u.app.Updater.DownloadAndInstall(ctx); err != nil {
-			log.Println(err)
-		}
-	}()
-	return nil
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	err := u.app.Updater.DownloadAndInstall(ctx)
+	if err != nil {
+		log.Println(err)
+	}
+	return err
 }
 
 func (u *updateService) RestartApp() error {

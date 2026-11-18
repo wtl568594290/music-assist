@@ -64,7 +64,7 @@
           </el-scrollbar>
         </el-tab-pane>
         <el-tab-pane label="About" name="about" class="h-full">
-          <about-view @VersionClick="updateViewRef?.manualCheckUpdate()" />
+          <about-view @VersionClick="updateViewRef?.check()" />
         </el-tab-pane>
         <el-tab-pane label="Close" name="close"></el-tab-pane>
       </el-tabs>

@@ -7,6 +7,7 @@ export enum StorageKey {
   LastAutoCheckUpdateTime = 'lastAutoCheckUpdateTime',
   SyncRemoteUrlList = 'syncRemoteUrlList',
   DocSortType = 'docSortType',
+  IgnoreUpdateVersionList = 'ignoreUpdateVersionList',
 }
 
 export interface StorageSchema {
@@ -17,6 +18,7 @@ export interface StorageSchema {
     url: string
   }[]
   [StorageKey.DocSortType]: SortType
+  [StorageKey.IgnoreUpdateVersionList]: string[]
 }
 
 function getKey(key: StorageKey): string {
