@@ -154,6 +154,7 @@ const handleDownload = () => {
 onMounted(async () => {
   Events.On(SyncMsg, (ev) => {
     syncMsg(ev.data)
+    addStoreRemoteUrlList(remoteUrl.value)
   })
   Events.On(SyncMsgError, (ev) => {
     syncMsgError(ev.data)
