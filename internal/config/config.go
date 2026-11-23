@@ -62,8 +62,12 @@ func Save() error {
 	if configPath == "" {
 		return errors.New("config path is empty")
 	}
-	err := iniFile.ReflectFrom(config)
-	if err != nil {
+	// ini.ReflectFrom 对空切片是空操作，不会覆盖文件里的旧值，
+	// 因此列表为空时先显式把该 key 的值清空，其余字段仍由 ReflectFrom 写入
+	if len(config.Sources) == 0 {
+		iniFile.Section("").Key("Sources").SetValue("")
+	}
+	if err := iniFile.ReflectFrom(config); err != nil {
 		return err
 	}
 	return iniFile.SaveTo(configPath)

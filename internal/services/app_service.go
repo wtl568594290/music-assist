@@ -60,10 +60,11 @@ func (as *appService) ServiceStartup(ctx context.Context, options application.Se
 		w = cw
 		h = ch
 	}
+	// 未保存过位置时 PosX/PosY 为 -1，此时交由系统居中
 	x, y := config.GetPos()
-	if cw > 0 && ch > 0 {
-		x = cw
-		y = ch
+	initialPosition := application.WindowCentered
+	if x >= 0 && y >= 0 {
+		initialPosition = application.WindowXY
 	}
 	if mainWin == nil {
 		mainWin = as.app.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -71,8 +72,10 @@ func (as *appService) ServiceStartup(ctx context.Context, options application.Se
 			// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
 			Width:  w,
 			Height: h,
-			X:      x,
-			Y:      y,
+			// 只有显式指定 WindowXY 时 X/Y 才会生效
+			InitialPosition: initialPosition,
+			X:               x,
+			Y:               y,
 			Windows: application.WindowsWindow{
 				Theme: application.Dark,
 			},

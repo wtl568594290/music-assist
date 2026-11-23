@@ -108,6 +108,9 @@ function fmtSpeed(speed: number): string {
 }
 
 async function check(manual: boolean = true) {
+  if (step.value === UpdateStep.Checking) {
+    return
+  }
   if (step.value !== UpdateStep.Idle && manual && !dialogVisible.value) {
     dialogVisible.value = true
     return
