@@ -1,7 +1,13 @@
 <template>
   <div class="w-full h-full select-none">
     <image-view :img-info="imgInfo" @operate="showDialog" @next="nextImg" @prev="prevImg" />
-    <el-dialog v-model="dialogVisible" fullscreen :show-close="false" body-class="h-full">
+    <el-dialog
+      v-model="dialogVisible"
+      fullscreen
+      :show-close="false"
+      body-class="h-full"
+      header-class="main-dialog-header"
+    >
       <el-tabs v-model="activeName" type="card" class="h-full" :before-leave="handleTabClick">
         <el-tab-pane label="Music" name="music" class="h-full">
           <music-view
@@ -19,6 +25,9 @@
         <el-tab-pane label="Document" name="document" class="h-full">
           <document-view :disabled="imgs.length === 0" />
         </el-tab-pane>
+        <el-tab-pane v-if="!aloneMetronome" label="Metronome" name="metronome" class="h-full">
+          <metronome-view @split="splitMetronome" />
+        </el-tab-pane>
         <el-tab-pane label="About" name="about" class="h-full">
           <about-view @VersionClick="updateViewRef?.check()" />
         </el-tab-pane>
@@ -35,6 +44,7 @@ import SourceView from './SourceView.vue'
 import DocumentView from './DocumentView.vue'
 import AboutView from './AboutView.vue'
 import UpdateView from './UpdateView.vue'
+import MetronomeView from '../metronome/index.vue'
 
 import { GetImgSortType } from '@bindings/musicassist/internal/services/appservice'
 
@@ -44,6 +54,7 @@ import type { TabPaneName } from 'element-plus'
 import { useSortType } from './useSortType'
 import { DetectChanges } from '@bindings/musicassist/internal/services/sourceservice'
 import { useImages } from './useImages'
+import { useMetronomeManage } from './useMetronomeManage'
 
 const updateViewRef = ref<InstanceType<typeof UpdateView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
@@ -62,6 +73,12 @@ const {
 
 const dialogVisible = ref(false)
 const activeName = ref('sources')
+const { aloneMetronome, splitMetronome } = useMetronomeManage()
+
+/** 分离后 Metronome 标签被移除，合并回来后重新选中它 */
+watch(aloneMetronome, (alone) => {
+  activeName.value = alone ? 'music' : 'metronome'
+})
 
 const handleChose = (path: string) => {
   selectImageByPath(path)
@@ -108,7 +125,8 @@ onMounted(async () => {
 })
 </script>
 <style scoped>
-:deep(.el-dialog__header) {
+/* 只作用于本组件的主对话框，避免 :deep 穿透到子组件（如节拍器）的对话框 */
+:deep(.main-dialog-header) {
   padding-bottom: 0;
 }
 </style>

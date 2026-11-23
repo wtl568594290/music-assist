@@ -48,6 +48,7 @@ func main() {
 	app.RegisterService(application.NewService(services.NewAppService(app, notifier)))
 	app.RegisterService(application.NewService(services.NewSourceService(app)))
 	app.RegisterService(application.NewService(services.NewUpdateService(app)))
+	app.RegisterService(application.NewService(services.NewMetronomeService(app)))
 
 	err := app.Run()
 

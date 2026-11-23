@@ -12,6 +12,11 @@ const router = createRouter({
       name: 'Home',
       component: () => import('../views/home/index.vue'),
     },
+    {
+      path: '/metronome',
+      name: 'Metronome',
+      component: () => import('../views/metronome/index.vue'),
+    },
   ],
 })
 

@@ -9,6 +9,14 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+// MetronomeConf 独立节拍器窗口的配置，对应 ini 中的 [metronome] 分区
+type MetronomeConf struct {
+	Width  int
+	Height int
+	PosX   int
+	PosY   int
+}
+
 type Conf struct {
 	Height   int
 	Width    int
@@ -16,6 +24,8 @@ type Conf struct {
 	PosY     int
 	Sources  []string
 	SortType common.SortType
+
+	Metronome MetronomeConf `ini:"metronome"`
 }
 
 const (
@@ -51,6 +61,13 @@ func init() {
 		PosX:     -1,
 		PosY:     -1,
 		SortType: common.SortByName,
+
+		Metronome: MetronomeConf{
+			Width:  1024,
+			Height: 768,
+			PosX:   -1,
+			PosY:   -1,
+		},
 	}
 	err = iniFile.MapTo(config)
 	if err != nil {
@@ -89,6 +106,24 @@ func GetPos() (int, int) {
 func SetPos(posX, posY int) {
 	config.PosX = posX
 	config.PosY = posY
+}
+
+func GetMetronomeSize() (int, int) {
+	return config.Metronome.Width, config.Metronome.Height
+}
+
+func SetMetronomeSize(width, height int) {
+	config.Metronome.Width = width
+	config.Metronome.Height = height
+}
+
+func GetMetronomePos() (int, int) {
+	return config.Metronome.PosX, config.Metronome.PosY
+}
+
+func SetMetronomePos(posX, posY int) {
+	config.Metronome.PosX = posX
+	config.Metronome.PosY = posY
 }
 
 func GetSources() []string {

@@ -87,7 +87,11 @@ func (as *appService) ServiceStartup(ctx context.Context, options application.Se
 			URL: "/",
 		})
 		mainWin.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
+			if win := takeMetronomeWindow(); win != nil {
+				win.Close()
+			}
 			bounds := mainWin.Bounds()
+
 			x, y := bounds.X, bounds.Y
 			w, h := bounds.Width, bounds.Height
 			config.SetPos(x, y)
