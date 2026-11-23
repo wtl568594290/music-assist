@@ -1,67 +1,23 @@
 <template>
-  <div class="w-full h-full select-none relative">
-    <div class="h-full w-full" @wheel.prevent="handleWheel" @dblclick="showDialog">
-      <img v-show="curSrc" :src="curSrc" class="object-contain w-full h-full min-w-0 min-h-0" />
-    </div>
+  <div class="w-full h-full select-none">
+    <image-view :img-info="imgInfo" @operate="showDialog" @next="nextImg" @prev="prevImg" />
     <el-dialog v-model="dialogVisible" fullscreen :show-close="false" body-class="h-full">
       <el-tabs v-model="activeName" type="card" class="h-full" :before-leave="handleTabClick">
         <el-tab-pane label="Music" name="music" class="h-full">
-          <div class="w-full h-full flex flex-col gap-2">
-            <div class="flex flex-row gap-2">
-              <el-input v-model="searchText" placeholder="Search" clearable class="flex-2" />
-              <el-select
-                v-model="selectedSortType"
-                placeholder="Sort Type"
-                class="flex-1"
-                @change="handleChangeSortType"
-              >
-                <el-option v-for="item in sortTypeList" :key="item" :label="item" :value="item" />
-              </el-select>
-            </div>
-            <el-scrollbar class="flex-1 min-h-0">
-              <div class="flex flex-wrap gap-1">
-                <el-tag
-                  v-for="(item, idx) in filteredImgs"
-                  :key="idx"
-                  @click="handleChose(item.path)"
-                  :type="item.path === curPath ? 'primary' : 'info'"
-                  class="cursor-pointer"
-                  size="large"
-                >
-                  {{ item.name }}
-                </el-tag>
-              </div>
-            </el-scrollbar>
-          </div>
+          <music-view
+            v-model="selectedSortType"
+            :sort-type-list="sortTypeList"
+            :imgs="imgs"
+            :cur-index="curIndex"
+            @change="handleChangeSortType"
+            @chose="handleChose"
+          />
         </el-tab-pane>
         <el-tab-pane label="Sources" name="sources" class="h-full">
-          <div class="flex flex-col gap-2 h-full">
-            <el-button-group>
-              <el-button
-                v-for="item in actions"
-                :key="item.name"
-                :icon="item.icon"
-                :title="item.info"
-                :type="item.type || undefined"
-                @click="handleChangeSources(item.fn)"
-              />
-            </el-button-group>
-            <el-scrollbar class="flex-1 min-h-0">
-              <div
-                v-for="(item, index) in sources"
-                :key="index"
-                class="pl-1 truncate hover:bg-green-600 hover:text-white cursor-pointer"
-                @click="handleChangeSources(() => RemoveSource(item.Path))"
-              >
-                <span>{{ item.Path }}</span>
-              </div>
-            </el-scrollbar>
-          </div>
+          <source-view :sources="sources" @change-sources="changeSources" />
         </el-tab-pane>
         <el-tab-pane label="Document" name="document" class="h-full">
-          <el-scrollbar class="flex-1 min-h-0">
-            <MusicDocument :disabled="imgs.length === 0" />
-          </el-scrollbar>
+          <document-view :disabled="imgs.length === 0" />
         </el-tab-pane>
         <el-tab-pane label="About" name="about" class="h-full">
           <about-view @VersionClick="updateViewRef?.check()" />
@@ -69,156 +25,46 @@
         <el-tab-pane label="Close" name="close"></el-tab-pane>
       </el-tabs>
     </el-dialog>
-    <div
-      v-show="titleTips"
-      class="absolute p-2 top-2 right-2 text-2xl bg-gray-900 text-white"
-      :class="{ 'fade-out': showTitleTips }"
-    >
-      {{ titleTips }}
-    </div>
   </div>
   <update-view ref="updateViewRef" />
 </template>
 <script setup lang="ts">
-import MusicDocument from './MusicDocument.vue'
-import UpdateView from './UpdateView.vue'
+import ImageView from './ImageView.vue'
+import MusicView from './MusicView.vue'
+import SourceView from './SourceView.vue'
+import DocumentView from './DocumentView.vue'
 import AboutView from './AboutView.vue'
+import UpdateView from './UpdateView.vue'
 
-import { GetImgSortType, SetImgSortType } from '@bindings/musicassist/internal/services/appservice'
-import { DocumentAdd, Folder, FolderAdd, Delete, Refresh } from '@element-plus/icons-vue'
-import { procImgFilePaths, type Image } from './utils'
-import { onKeyStroke, useDebounceFn, useEventListener, useThrottleFn } from '@vueuse/core'
-import type { ButtonType, TabPaneName } from 'element-plus'
-import type { IconPropType } from 'element-plus/es/utils/index.mjs'
+import { GetImgSortType } from '@bindings/musicassist/internal/services/appservice'
+
+import { useDebounceFn, useEventListener } from '@vueuse/core'
+import type { TabPaneName } from 'element-plus'
+
 import { useSortType } from './useSortType'
-import {
-  AddSource,
-  ClearSources,
-  DetectChanges,
-  GetBase64,
-  GetImages,
-  GetSources,
-  RemoveSource,
-} from '@bindings/musicassist/internal/services/sourceservice'
-import type { Source } from '@bindings/musicassist/internal/common'
-import { storage, StorageKey } from '@/utils/storage'
+import { DetectChanges } from '@bindings/musicassist/internal/services/sourceservice'
+import { useImages } from './useImages'
 
-interface Actions {
-  icon: IconPropType
-  fn: () => Promise<void>
-  name?: string
-  info: string
-  type?: ButtonType
-}
-
-const THROTTLE_TIME = 50
 const updateViewRef = ref<InstanceType<typeof UpdateView> | null>(null)
 const { sortTypeList, selectedSortType, sortTypeInit } = useSortType()
-const sources = ref<Source[]>([])
-const imgs = ref<Image[]>([])
-const searchText = ref('')
-const curIndex = ref(-1)
-const curSrc = ref('')
+const {
+  imgInfo,
+  imgs,
+  sources,
+  curIndex,
+  imagesInit,
+  changeSources,
+  updateImages,
+  selectImageByPath,
+  prevImg,
+  nextImg,
+} = useImages()
+
 const dialogVisible = ref(false)
 const activeName = ref('sources')
-const titleTips = ref('')
-const showTitleTips = ref(false)
-
-let mountedComplete = false
-
-const actions: Actions[] = [
-  {
-    icon: Folder,
-    fn: () => AddSource(true, true),
-    name: 'Add Source (Traversal)',
-    info: 'Add a image folder (traversal)',
-  },
-  {
-    icon: FolderAdd,
-    fn: () => AddSource(true, false),
-    name: 'Add Source',
-    info: 'Add a image folder',
-  },
-  {
-    icon: DocumentAdd,
-    fn: () => AddSource(false, false),
-    name: 'Add Source (Single)',
-    info: 'Add a image file',
-  },
-  {
-    icon: Delete,
-    fn: () => ClearSources(),
-    name: 'Clear Sources',
-    info: 'Clear all sources',
-  },
-  {
-    icon: Refresh,
-    fn: async () => {},
-    name: 'Refresh',
-    info: 'Refresh sources',
-  },
-]
-
-const filteredImgs = computed(() => {
-  if (!searchText.value) {
-    return imgs.value
-  }
-  return imgs.value.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchText.value.toLowerCase()) ||
-      item.pyletter.toLowerCase().includes(searchText.value.toLowerCase()) ||
-      item.py.toLowerCase().includes(searchText.value.toLowerCase()),
-  )
-})
-
-const curPath = computed(() => imgs.value[curIndex.value]?.path || '')
-
-async function updateImages() {
-  const lastPath = imgs.value[curIndex.value]?.path || ''
-  const list = (await GetImages()) || []
-  imgs.value = procImgFilePaths(list)
-  if (imgs.value.length > 0) {
-    if (curIndex.value === -1) {
-      curIndex.value = 0
-    } else {
-      // 触发 watch 变化
-      curIndex.value = -1
-      await nextTick()
-      if (lastPath) {
-        const lastIndex = imgs.value.findIndex((item) => item.path === lastPath)
-        if (lastIndex !== -1) {
-          curIndex.value = lastIndex
-        } else {
-          curIndex.value = 0
-        }
-      } else {
-        curIndex.value = 0
-      }
-    }
-  } else {
-    curIndex.value = -1
-  }
-}
-
-async function changeSources() {
-  sources.value = ((await GetSources()) || []).sort(
-    (a, b) =>
-      Number(b.IsDir) - Number(a.IsDir) || a.Path.localeCompare(b.Path, 'zh-CN', { numeric: true }),
-  )
-  await updateImages()
-}
-
-const handleChangeSources = async (fn: () => Promise<void>) => {
-  try {
-    await fn()
-  } catch (_) {
-    return
-  }
-  await changeSources()
-}
 
 const handleChose = (path: string) => {
-  curIndex.value = imgs.value.findIndex((item) => item.path === path)
+  selectImageByPath(path)
   dialogVisible.value = false
 }
 
@@ -230,18 +76,6 @@ const handleTabClick = (activeName: TabPaneName, _: TabPaneName) => {
   return true
 }
 
-function prevImg() {
-  if (curIndex.value > 0) {
-    curIndex.value--
-  }
-}
-
-function nextImg() {
-  if (curIndex.value < imgs.value.length - 1) {
-    curIndex.value++
-  }
-}
-
 async function showDialog() {
   if (!dialogVisible.value) {
     dialogVisible.value = true
@@ -249,51 +83,8 @@ async function showDialog() {
 }
 
 const handleChangeSortType = async () => {
-  if (selectedSortType.value) {
-    await SetImgSortType(selectedSortType.value)
-    await updateImages()
-  }
+  await updateImages()
 }
-
-watch(curIndex, async (newVal, _) => {
-  const newImg = imgs.value[newVal]
-  if (newVal !== -1 && newImg) {
-    if (!newImg.base64) {
-      const base64 = await GetBase64(newImg.path)
-      newImg.base64 = base64
-      curSrc.value = base64
-    } else {
-      curSrc.value = newImg.base64
-    }
-
-    if (newImg && newImg.name) {
-      // 触发消失动画
-      titleTips.value = `${newImg.name} - ${newVal + 1}/${imgs.value.length}`
-      showTitleTips.value = false
-      requestAnimationFrame(() => {
-        showTitleTips.value = true
-      })
-    }
-  } else {
-    curSrc.value = ''
-  }
-
-  // Events.Emit('index-change', newVal)
-  if (mountedComplete) {
-    storage.set(StorageKey.LatestImageIndex, newVal)
-  }
-})
-
-const stopKeyLeft = onKeyStroke('ArrowLeft', useThrottleFn(prevImg, THROTTLE_TIME))
-const stopKeyRight = onKeyStroke('ArrowRight', useThrottleFn(nextImg, THROTTLE_TIME))
-const stopEsc = onKeyStroke('Escape', showDialog)
-const handleWheel = useThrottleFn((e: WheelEvent) => {
-  if (e.deltaY > 0) {
-    nextImg()
-  } else {
-    prevImg()
-  }
-}, THROTTLE_TIME)
 
 /** 点击标题栏时会触发两次 */
 const focusUpdateImages = useDebounceFn(async () => {
@@ -307,53 +98,17 @@ useEventListener('focus', async () => {
 })
 
 onMounted(async () => {
-  mountedComplete = false
-  const latestIndex = storage.get(StorageKey.LatestImageIndex) ?? -1
-  await handleChangeSources(async () => {})
+  await imagesInit()
   const sortType = await GetImgSortType()
   await sortTypeInit(sortType)
-  if (imgs.value.length > 0) {
-    if (latestIndex !== -1 && curIndex.value !== latestIndex) {
-      await nextTick()
-      curIndex.value = latestIndex
-    }
-  } else {
+  if (imgs.value.length === 0) {
     activeName.value = 'sources'
     showDialog()
   }
-  mountedComplete = true
-})
-
-onUnmounted(() => {
-  stopKeyLeft()
-  stopKeyRight()
-  stopEsc()
 })
 </script>
 <style scoped>
 :deep(.el-dialog__header) {
   padding-bottom: 0;
-}
-
-/* 定义消失动画 */
-@keyframes fadeOut {
-  0% {
-    opacity: 0.8; /* 开始时透明度 100% */
-  }
-  75% {
-    opacity: 0.8; /* 前 3 秒保持透明度 100% */
-  }
-  100% {
-    opacity: 0; /* 最后 1 秒透明度降到 0 */
-  }
-}
-
-/* 应用动画 */
-.fade-out {
-  animation: fadeOut 3s ease-in-out 1 forwards;
-  /* 4秒总时长 = 3秒显示 + 1秒消失 */
-  /* ease-in-out 使动画过渡更自然 */
-  /* 1 表示动画只执行一次 */
-  /* forwards 使动画结束后保持最终状态（透明度 0） */
 }
 </style>
