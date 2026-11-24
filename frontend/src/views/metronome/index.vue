@@ -2,12 +2,12 @@
   <div class="w-full h-full relative">
     <div
       class="absolute inset-0 flex justify-center items-center select-none"
-      @dblclick="handleOnTop"
+      @dblclick="handlePanelDblclick"
     >
       <div ref="refContainer" class="fit-box overflow-hidden relative">
         <img
           ref="refPan"
-          src="/pan.png"
+          src="/pan.webp"
           class="absolute left-1/2 transform -translate-x-1/2 object-contain h-full"
         />
         <div class="absolute inset-0 flex justify-center items-center">
@@ -17,14 +17,14 @@
             :style="{ animationDuration: `${animationDuration}s` }"
           >
             <img
-              src="/needle.png"
-              class="absolute bottom-[1.5%] object-contain drop-shadow-[-15px_6px_12px_rgba(0,0,0,0.35)]"
+              src="/needle.webp"
+              class="absolute bottom-[1.5%] left-0 h-auto w-full object-contain drop-shadow-[-15px_6px_12px_rgba(0,0,0,0.35)]"
             />
           </div>
         </div>
         <img
           ref="refMask"
-          src="/mask.png"
+          src="/mask.webp"
           class="absolute left-1/2 transform -translate-x-1/2 object-contain bottom-0"
         />
         <div
@@ -44,14 +44,22 @@
           {{ bpm }}bpm {{ beat }}beat
         </div>
       </div>
-      <!-- 主窗口内提供播放/暂停按钮；独立窗口只通过设置弹窗的开关控制 -->
-      <div class="absolute bottom-3 right-3">
-        <el-button-group size="small">
-          <el-button v-show="!isIndependent" @click="togglePlay">{{
-            isPlaying ? 'Pause' : 'Play'
-          }}</el-button>
-          <el-button @click="handleSplit">{{ isIndependent ? 'Depend' : 'Independ' }}</el-button>
-        </el-button-group>
+      <!-- 主窗口内居中显示播放/暂停按钮，悬停显示、暂停时常显；独立窗口不显示 -->
+      <div
+        v-if="!isIndependent"
+        class="pointer-events-none absolute inset-0 flex items-center justify-center"
+      >
+        <div
+          class="pointer-events-auto flex h-24 w-28 cursor-pointer items-center justify-center rounded-2xl bg-black/30 text-white transition-opacity duration-200 hover:opacity-100"
+          :class="isPlaying ? 'opacity-0' : 'opacity-100'"
+          @click.stop="togglePlay"
+          @dblclick.stop
+        >
+          <el-icon :size="60">
+            <VideoPause v-if="isPlaying" />
+            <VideoPlay v-else />
+          </el-icon>
+        </div>
       </div>
     </div>
     <el-dialog v-model="isDialogVisible" title="Settings" @close="updateParams">
@@ -125,10 +133,8 @@
 
 <script setup lang="ts">
 import { Window } from '@wailsio/runtime'
-import {
-  CloseMetronomeWindow,
-  IsMetronomeIndependentWindow,
-} from '@bindings/musicassist/internal/services/metronomeservice'
+import { IsMetronomeIndependentWindow } from '@bindings/musicassist/internal/services/metronomeservice'
+import { VideoPause, VideoPlay } from '@element-plus/icons-vue'
 
 const emit = defineEmits<{
   (e: 'split'): void
@@ -136,14 +142,6 @@ const emit = defineEmits<{
 
 /** 是否运行在独立的节拍器窗口中 */
 const isIndependent = ref(false)
-
-const handleSplit = () => {
-  if (isIndependent.value) {
-    CloseMetronomeWindow()
-  } else {
-    emit('split')
-  }
-}
 
 interface AudioInfo {
   audio: HTMLAudioElement
@@ -241,9 +239,10 @@ const positionOptions = [
 const fontPosition: Ref<FontPosition> = ref('center')
 
 let isOnTop = false
-const handleOnTop = async () => {
-  // 仅独立窗口支持置顶；置顶状态不做持久化，重新分离出的窗口默认不置顶
+const handlePanelDblclick = async () => {
+  // 主窗口内双击面板分离出独立窗口；独立窗口内双击切换置顶
   if (!isIndependent.value) {
+    emit('split')
     return
   }
   isOnTop = !isOnTop
@@ -565,7 +564,7 @@ $ratio: 2 * math.tan($angle); // 自动转弧度
   left: 0;
   width: 100%;
   height: 100%;
-  background: url('/needle.png') no-repeat center center;
+  background: url('/needle.webp') no-repeat center center;
   background-size: contain;
   color: black;
   filter: blur(8px) opacity(0.55);
