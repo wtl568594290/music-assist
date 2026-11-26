@@ -4,12 +4,14 @@
       class="absolute inset-0 flex justify-center items-center select-none"
       @dblclick="handlePanelDblclick"
     >
-      <div ref="refContainer" class="fit-box overflow-hidden relative">
-        <img
-          ref="refPan"
-          src="/pan.webp"
-          class="absolute left-1/2 transform -translate-x-1/2 object-contain h-full"
-        />
+      <div class="fit-box overflow-hidden relative">
+        <!-- 包裹层按 pan 的固有比例定宽，mask 用 w-full 自动跟随表盘宽度 -->
+        <div class="absolute inset-0 flex justify-center">
+          <div class="pan-box relative">
+            <img src="/pan.webp" class="block h-full w-full object-contain" />
+            <img src="/mask.webp" class="absolute bottom-0 left-0 z-10 w-full" />
+          </div>
+        </div>
         <div class="absolute inset-0 flex justify-center items-center">
           <div
             ref="refNeedle"
@@ -22,26 +24,17 @@
             />
           </div>
         </div>
-        <img
-          ref="refMask"
-          src="/mask.webp"
-          class="absolute left-1/2 transform -translate-x-1/2 object-contain bottom-0"
-        />
         <div
           class="text-stroke-black absolute justify-center items-center"
-          :style="{
-            fontSize: `${fonSize}px`,
-            lineHeight: `${fonSize}px`,
-            ...positions[fontPosition],
-          }"
+          :style="{ '--font-zoom': fontZoom, ...positions[fontPosition] }"
         >
           {{ showText }}
         </div>
         <div
-          class="text-white absolute right-2 top-2 text-xl cursor-pointer"
+          class="info-label text-white absolute right-2 top-2 cursor-pointer"
           @click="handleShowSettings"
         >
-          {{ bpm }}bpm {{ beat }}beat
+          {{ bpm }} / {{ beat }}
         </div>
       </div>
       <!-- 主窗口内居中显示播放/暂停按钮，悬停显示、暂停时常显；独立窗口不显示 -->
@@ -103,7 +96,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="Font size">
-            <el-select v-model="fontZoom" placeholder="Font size" @change="resize">
+            <el-select v-model="fontZoom" placeholder="Font size">
               <el-option
                 v-for="(item, index) in fontSizeZooms"
                 :key="index"
@@ -168,14 +161,11 @@ const presets = [
 const bpm = ref('60')
 const bpmPresets = ['30', '40', '60', '80', '100', '120', '140', '160', '180', '210', '240']
 const cnt = ref(0)
-const refContainer = ref<HTMLElement | null>(null)
-const fonSize = ref(64)
 const fontSizeZooms = [0, 0.5, 1, 1.5, 2]
 const fontZoom = ref(1)
 const beat = ref(4)
 let timer: number | null = null
 let beatTimer: number | null = null
-let resizeObserver: ResizeObserver | null = null
 const audioMode: Ref<AudioMode> = ref('human')
 const modes = [
   {
@@ -192,8 +182,6 @@ const modes = [
   },
 ]
 const volume = ref(100)
-const refPan = ref<HTMLElement | null>(null)
-const refMask = ref<HTMLElement | null>(null)
 const positions = {
   leftTop: {
     left: '1rem',
@@ -293,28 +281,6 @@ const showText = computed(() => {
   }
   return `${cnt.value + 1}`
 })
-const resize = () => {
-  // 面板（如未激活的标签页）处于隐藏状态时测量结果为 0，不能写入错误的尺寸
-  if (!refContainer.value || refContainer.value.clientWidth === 0) {
-    return
-  }
-  const containerWidth = refContainer.value.clientWidth
-  let clc = containerWidth / 4
-  if (clc < 36) {
-    clc = 36
-  } else if (clc > 384) {
-    clc = 384
-  }
-  fonSize.value = clc * fontZoom.value
-  if (refPan.value && refMask.value) {
-    const rect = refPan.value.getBoundingClientRect()
-    const width = rect.width
-    if (width) {
-      refMask.value.style.width = `${width}px`
-    }
-  }
-}
-
 const updateParams = () => {
   localStorage.setItem('bpm', bpm.value)
   localStorage.setItem('fontZoom', fontZoom.value.toString())
@@ -448,18 +414,7 @@ const keyWatcher = (e: KeyboardEvent) => {
 }
 
 onMounted(async () => {
-  if (refPan.value) {
-    refPan.value.addEventListener('load', () => {
-      resize()
-    })
-  }
-  window.addEventListener('resize', resize)
   window.addEventListener('keydown', keyWatcher)
-  // 隐藏面板变为可见时不会触发 window resize，需要监听容器自身尺寸变化
-  if (refContainer.value) {
-    resizeObserver = new ResizeObserver(resize)
-    resizeObserver.observe(refContainer.value)
-  }
   presetsHis.value = JSON.parse(localStorage.getItem('presetsHis') || '[]')
   bpm.value = localStorage.getItem('bpm') || '60'
   fontZoom.value = parseFloat(localStorage.getItem('fontZoom') || '1')
@@ -486,8 +441,6 @@ onUnmounted(() => {
     clearTimeout(beatTimer)
   }
   audioInfoList.forEach(({ audio }) => audio.pause())
-  resizeObserver?.disconnect()
-  window.removeEventListener('resize', resize)
   window.removeEventListener('keydown', keyWatcher)
 })
 </script>
@@ -500,6 +453,8 @@ $ratio: 2 * math.tan($angle); // 自动转弧度
 
 .fit-box {
   aspect-ratio: $ratio;
+  /* 作为字号计算的查询容器（cqw 相对自身宽度） */
+  container-type: inline-size;
 }
 
 /* 当容器比较“宽”，让 fit-box 的宽度占满 */
@@ -516,6 +471,12 @@ $ratio: 2 * math.tan($angle); // 自动转弧度
     width: 100%;
     height: auto;
   }
+}
+
+/* pan.webp 的固有宽高比（1400 x 2435），包裹层据此定宽 */
+.pan-box {
+  height: 100%;
+  aspect-ratio: math.div(1400, 2435);
 }
 
 @keyframes rotate-forward {
@@ -549,8 +510,17 @@ $ratio: 2 * math.tan($angle); // 自动转弧度
 }
 
 .text-stroke-black {
-  -webkit-text-stroke: 2px black;
+  /* 字号跟随容器宽度：容器宽度的 1/4，限制在 36~384px，再乘以缩放系数 */
+  font-size: calc(clamp(36px, 25cqw, 384px) * var(--font-zoom, 1));
+  line-height: 1;
+  -webkit-text-stroke-width: calc(1em / 48);
+  -webkit-text-stroke-color: black;
   color: white;
+}
+
+/* 右上角参数文字，随容器宽度缩放 */
+.info-label {
+  font-size: clamp(12px, 4cqw, 32px);
 }
 
 .needle-shadow {
