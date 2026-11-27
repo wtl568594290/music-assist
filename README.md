@@ -1,6 +1,6 @@
 # Music Assist 
 
-A Windows desktop application for browsing numbered musical notation images and generating print-ready Docx documents.
+A Windows desktop application for browsing numbered musical notation images, practicing with a built-in metronome, and generating print-ready Docx documents.
 
 Built with **Go + Wails v3** on the backend and **Vue 3 + TypeScript + Element Plus + Tailwind CSS** on the frontend.
 
@@ -10,6 +10,12 @@ Built with **Go + Wails v3** on the backend and **Vue 3 + TypeScript + Element P
   - Navigate with arrow keys, mouse wheel, or double-click
   - Fullscreen browsing with auto-fading title tips
   - Base64-cached preview for smooth switching
+
+- **Metronome**
+  - Adjustable BPM and 1–16 beats with voice, beep, and machine sound modes
+  - Built-in and recent presets with locally persisted settings
+  - Responsive dial with configurable beat-number size and position
+  - Detachable independent window with always-on-top support
 
 - **Source Management**
   - Add folders (recursive / non-recursive) or individual image files
@@ -67,7 +73,9 @@ music-assist/
 ├── config/              # Runtime config persistence
 ├── build/               # Windows build / packaging assets (NSIS, MSIX)
 └── frontend/            # Vue 3 + Vite SPA
-    └── src/views/home/  # Main UI (viewer, sources, doc, sync, update, about)
+    └── src/views/
+        ├── home/        # Main UI (viewer, sources, doc, sync, update, about)
+        └── metronome/   # Built-in and independent-window metronome
 ```
 
 ## Getting Started
@@ -94,6 +102,9 @@ wails3 build
 
 # Package installer (NSIS / MSIX)
 wails3 package
+
+# Create release assets(Cloudflare R2)
+wails3 task release
 ```
 
 Outputs are placed under `bin/`.

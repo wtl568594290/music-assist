@@ -15,8 +15,8 @@
       </div>
 
       <div class="text-gray-700 text-center max-w-md">
-        A Windows desktop application for browsing numbered musical notation images and generating
-        print-ready Docx documents.
+        A Windows desktop application for browsing numbered musical notation images, practicing with
+        a built-in metronome, and generating print-ready Docx documents.
       </div>
 
       <el-divider class="w-80" />
@@ -86,6 +86,7 @@ import { Browser } from '@wailsio/runtime'
 import {
   Link,
   Picture,
+  Timer,
   FolderOpened,
   Search,
   Document,
@@ -102,6 +103,7 @@ const generateConfig = ref<GenerateConfig | null>(null)
 
 const features = [
   { icon: Picture, text: 'Image Viewer' },
+  { icon: Timer, text: 'Metronome' },
   { icon: FolderOpened, text: 'Source Management' },
   { icon: Search, text: 'Search & Sort' },
   { icon: Document, text: 'Docx Generation' },
